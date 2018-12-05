@@ -79,7 +79,7 @@ class OmniJs {
             }
             break;
           default:
-            txid = G_IMPORT[base.toLowerCase()].send({ from, rel, base, address, amount, wif, options });
+            txid = await G_IMPORT[base.toLowerCase()].send({ from, rel, base, address, amount, wif, options });
           break
         }
         resolve({txid})
@@ -95,7 +95,7 @@ class OmniJs {
 
     return new Promise(async (resolve, reject) => {
         try{
-          txs = G_IMPORT[base.toLowerCase()].getTxs({ config, rel, base, address });
+          txs = await G_IMPORT[base.toLowerCase()].getTxs({ config, rel, base, address });
           resolve({txs, n_tx});
         }catch(e){ reject(e)}
     });
@@ -109,7 +109,7 @@ class OmniJs {
     let balance: number = 0;
     return new Promise(async (resolve, reject) => {
       try {
-        balances =  G_IMPORT[base.toLowerCase()].getBalance({ config, rel, base, address });
+        balances =  await G_IMPORT[base.toLowerCase()].getBalance({ config, rel, base, address });
         resolve(balances); 
   }catch(e){
     reject(e);
