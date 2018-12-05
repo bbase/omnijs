@@ -15,6 +15,7 @@ import axios from 'axios';
 
 export const getWeb3 = (rpc) => {
     //@ts-ignore
+
     return new Web3(new Web3.providers.HttpProvider(rpc, web3Options));
 }
 export const sendETH = ({
@@ -50,7 +51,6 @@ export const sendERC20 = ({
 }) => {
     const { rpc } = getConfig(options.config, base, base);
     const web3 = getWeb3(rpc);
-    console.log(rel,base)
     return new Promise(async (resolve, reject) => {
         const asset = options.config[base].assets[rel];
 
@@ -89,7 +89,7 @@ export const sendSignedWeb3 = (wif: string, txData: any, cb: any, web3: any) => 
 }
 
 
-export const getEthTxs = async ({ address, rel, base, config }) => {
+export const getTxs = async ({ address, rel, base, config }) => {
     const { api } = getConfig(config, base, base);
     const txs = [];
     

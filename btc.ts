@@ -90,9 +90,9 @@ export const getTxs = async ({config, address, rel, base}) => {
 
     if (from != address) {
       kind = "got";
-      o.vout.map(o => {
-        if (o.scriptPubKey.addresses[0] == address) {
-          value += o.value;
+      o.vout.map(ox => {
+        if (ox.scriptPubKey.addresses && ox.scriptPubKey.addresses[0] == address) {
+          value += ox.value;
         }
       })
     } else {
