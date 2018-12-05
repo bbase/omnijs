@@ -1,11 +1,15 @@
 import bip39 from 'bip39'
 import { getRootNode, deriveAccount, getWallet } from './keys'
-import { getBalance as getBalanceBtc , send as sendBTC, getTxs as getBtcTx } from './insight'
-import { sendETH, sendERC20, getEthTxs, getBalance as getBalanceEth } from './eth'
-import { getBalance as getBalanceVet, getVetTxs } from './vet'
-import { getBalance as getBalanceXrp, send as sendXRP, getTxs as getXrpTxs } from './xrp'
-import { getBalance as getBalanceNano } from './nano'
-import { getBalance as getBalanceNeo ,send as sendNeo, getTxs as getNeoTx } from './neo'
+import { sendETH, sendERC20 } from './eth'
+
+import * as btc from './btc';
+import * as eth from './eth';
+import * as neo from './neo';
+import * as nano from './nano';
+import * as vet from './vet';
+import * as xrp from './xrp';
+
+const G_IMPORT = {btc, eth, neo, nano, vet, xrp};
 
 import {
   getAtomicValue,
@@ -65,8 +69,6 @@ class OmniJs {
       let txid;
       try{
         switch (base) {
-          case 'BTC':
-            txid = await sendBTC({ from, rel, address, amount, wif, options});
           case 'ETH':
             //options.gasLimit *= 1000000000;
             options.gasPrice *= 1000000000;
@@ -76,11 +78,8 @@ class OmniJs {
               txid = await sendERC20({ from, rel, base, address, amount, wif, options });
             }
             break;
-          case "NEO":
-            txid = await sendNeo({ from, rel, base, address, amount, wif, options });
-            break
-          case "XRP":
-            txid = await sendXRP({ from, rel, base, address, amount, wif, options });
+          default:
+            txid = G_IMPORT[base.toLowerCase()].send({ from, rel, base, address, amount, wif, options });
           break
         }
         resolve({txid})
@@ -96,23 +95,7 @@ class OmniJs {
 
     return new Promise(async (resolve, reject) => {
         try{
-          switch(base){
-            case 'BTC':
-              txs = await getBtcTx({ config, rel, base, address});
-            break;                  
-            case 'NEO':
-              txs = await getNeoTx({ config, rel, base, address});
-            break;
-            case 'XRP':
-              txs = await getXrpTxs({ config, rel, base, address});
-            break;
-            case 'VET':
-              txs = await getVetTxs({ config, rel, base, address});
-            break;
-            case 'ETH':
-              txs = await getEthTxs({ config, rel, base, address});
-            break;            
-          }
+          txs = G_IMPORT[base.toLowerCase()].getTx({ config, rel, base, address });
           resolve({txs, n_tx});
         }catch(e){ reject(e)}
     });
@@ -126,26 +109,7 @@ class OmniJs {
     let balance: number = 0;
     return new Promise(async (resolve, reject) => {
       try {
-        switch (base) {
-          case 'BTC':
-            balances = getBalanceBtc({config, rel, address, base});
-          break;
-          case 'NEO':
-            balances = getBalanceNeo({ config, rel, address, base});
-          break;
-          case 'NANO':
-            balances = getBalanceNano({ config, rel, address, base});
-          break;
-          case 'XRP':
-            balances = getBalanceXrp({ config, rel, address, base});
-          break;
-          case 'VET':
-            balances = getBalanceVet({ config, rel, address, base});
-          break;
-          case 'ETH':
-            balances = getBalanceEth({config, rel, address, base});
-          break;          
-        }
+        balances =  G_IMPORT[base.toLowerCase()].getBalance({ config, rel, base, address });
         resolve(balances); 
   }catch(e){
     reject(e);
