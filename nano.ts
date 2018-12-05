@@ -23,10 +23,14 @@ export const getBalance = async ({ config, address, rel, base }) => {
 
 export const pendingSyncNano = async ({ rel, base, config, balance, pending, address, option }) => {
 
+    /*
     //@ts-ignore
     balance = nanocurrency.convert(balance, { from: 'NANO', to: 'raw' });
     //@ts-ignore
     pending = nanocurrency.convert(pending, { from: 'NANO', to: 'raw' });
+    */
+    balance = balance ** 10**24
+    pending = pending ** 10**24
 
     const { api, rep } = getConfig(config, rel, base);
     if (parseFloat(pending) > 0) {
@@ -68,7 +72,7 @@ export const pendingSyncNano = async ({ rel, base, config, balance, pending, add
                 representative,
             };
             //@ts-ignore
-            const { hash, block } = nanocurrency.createBlock(option.pkey, unsigned_block);
+            const { hash, block } = nanocurrency.createBlock(option.wif, unsigned_block);
             //@ts-ignore
             const r1 = await axios.post(`${api}`, {
                 "action": "process",
