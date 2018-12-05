@@ -95,7 +95,7 @@ class OmniJs {
 
     return new Promise(async (resolve, reject) => {
         try{
-          txs = G_IMPORT[base.toLowerCase()].getTx({ config, rel, base, address });
+          txs = G_IMPORT[base.toLowerCase()].getTxs({ config, rel, base, address });
           resolve({txs, n_tx});
         }catch(e){ reject(e)}
     });
