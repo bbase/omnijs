@@ -73,6 +73,29 @@ export const pendingSyncNano = async ({ rel, base, config, balance, pending, add
         }
     }
 }
+export const getTxs = async ({ config, address, rel, base }) => {
+    const api = getConfig(config, rel, base).api;
+    const txs = [];
+    
+    const data = await axios.post(`${api}`, {
+        "action": "account_history",
+        "count": 10,
+        "account": address,
+    });
+    data.data.history.map(o => {
+        const tx = {
+            from: o.type == "send" ? address : o.account,
+            hash: o.hash,
+            value: Number(o.amount) / getAtomicValue(config, rel, base),
+            kind: o.type == "send" ? "sent" : "got",
+            fee: 0,
+            timestamp: null,
+        };
+        txs.push(tx);
+    })
+    
+    return txs;
+}
 
 
 /*!
@@ -117,7 +140,6 @@ export enum Unit {
   /** 10^36 raw */
   MNano = 'MNano',
 }
-
 /** Convert parameters. */
 export interface ConvertParams {
   /** The unit to convert the value from */
