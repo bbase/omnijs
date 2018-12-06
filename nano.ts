@@ -1,5 +1,6 @@
 import {    
     getConfig,
+    getAtomicValue,
 } from 'app/constants'
 import axios from 'axios';
 import * as nanocurrency from 'nanocurrency';
@@ -21,8 +22,56 @@ export const getBalance = async ({ config, address, rel, base }) => {
     return balances;
 }
 
-const rawDecimals = 30;
-export const pendingSyncNano = async ({ rel, base, config, balance, pending, address, option }) => {
+export const send = async ({ from, rel, address, amount, wif, options }) => {
+  const base = "NANO"
+  return new Promise(async (resolve, reject) => {    
+        const { api, rep } = getConfig(options.config, rel, base);
+        const d4 = await axios.post(`${api}`, {
+            "action": "account_representative",
+            "account": from,
+        });
+
+        const d3 = await axios.post(`${api}`, {
+            "action": "accounts_frontiers",
+            "accounts": [from],
+        });
+
+        const representative = d4.data.representative || rep;
+        const frontier = d3.data.frontiers[from];
+        const previous = frontier || "0000000000000000000000000000000000000000000000000000000000000000";
+        const link = address;
+        const w1 = await axios.post(`${api}`, {
+            "action": "work_generate",
+            "hash": frontier || options.publicKey
+        });
+        const bal = new BigNumber(options.balance.balance_raw).minus(amount*getAtomicValue(options.config, rel, base));
+
+        const unsigned_block = {
+            link,
+            previous,
+            work: w1.data.work,
+            balance: bal.toString(10),
+            representative,
+        };
+        console.log(unsigned_block)
+        //@ts-ignore
+        const { hash, block } = nanocurrency.createBlock(wif, unsigned_block);
+        
+        try{
+          const r1 = await axios.post(`${api}`, {
+              "action": "process",
+              block: JSON.stringify(block),
+          });
+          console.log(r1.data)
+        }catch(e){
+          console.log(e)
+          reject(e)
+        }
+        resolve(hash)
+    });        
+}
+
+export const pendingSyncNano = async ({ rel, base, config, balance, pending, address, options }) => {
     
     const { api, rep } = getConfig(config, rel, base);
     if (parseFloat(pending) > 0) {
@@ -51,7 +100,7 @@ export const pendingSyncNano = async ({ rel, base, config, balance, pending, add
             const link = x1;
             const w1 = await axios.post(`${api}`, {
                 "action": "work_generate",
-                "hash": frontier || option.publicKey
+                "hash": frontier || options.publicKey
             });
 
             const bal = new BigNumber(balance).plus(o.amount);
@@ -64,7 +113,7 @@ export const pendingSyncNano = async ({ rel, base, config, balance, pending, add
                 representative,
             };
             //@ts-ignore
-            const { hash, block } = nanocurrency.createBlock(option.wif, unsigned_block);
+            const { hash, block } = nanocurrency.createBlock(options.wif, unsigned_block);
             //@ts-ignore
             const r1 = await axios.post(`${api}`, {
                 "action": "process",
