@@ -3,19 +3,13 @@ import { getAtomicValue, toBitcoinJS, getConfig } from 'app/constants'
 import bitcoin from 'bitcoinjs-lib'
 
 
-export const getUtxos = ({ config, rel, address }) => {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const data = await axios.post(`${getConfig(config, rel, "BTC").api}/addrs/utxo`, {
-        addrs: address
-      })
-      resolve(data.data)
-    } catch (e) {
-      reject(e)
-    }
+export const getUtxos = async ({ config, rel, address }) => {
+  const data = await axios.post(`${getConfig(config, rel, "BTC").api}/addrs/utxo`, {
+    addrs: address
   })
+  return data.data
 }
-export const broadcastTx = ({
+export const broadcastTx = async ({
   from,
   rel,
   utxos,
@@ -25,57 +19,45 @@ export const broadcastTx = ({
   fee,
   config
 }) => {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const network = toBitcoinJS(config[rel].network)
-      var key = bitcoin.ECPair.fromWIF(wif, network)
-      var tx = new bitcoin.TransactionBuilder(network)
-      let total = 0
-      for (let utx of utxos) {
-        tx.addInput(utx.txid, utx.vout)
-        total += utx.satoshis
-      }
-      tx.addOutput(to, amount)
-      const change = total - (amount + fee)
-      if (change) tx.addOutput(from, change)
-
-      utxos.forEach((v, i) => {
-        tx.sign(i, key)
-      })
-      const rawtx = tx.build().toHex()
-      const data = await axios.post(`${getConfig(config, rel, "BTC").api}/tx/send`, {
-        rawtx
-      })
-      resolve(data.data.txid)
-    } catch (e) {
-      reject(e)
+    const network = toBitcoinJS(config[rel].network)
+    var key = bitcoin.ECPair.fromWIF(wif, network)
+    var tx = new bitcoin.TransactionBuilder(network)
+    let total = 0
+    for (let utx of utxos) {
+      tx.addInput(utx.txid, utx.vout)
+      total += utx.satoshis
     }
-  })
+    tx.addOutput(to, amount)
+    const change = total - (amount + fee)
+    if (change) tx.addOutput(from, change)
+
+    utxos.forEach((v, i) => {
+      tx.sign(i, key)
+    })
+    const rawtx = tx.build().toHex()
+    const data = await axios.post(`${getConfig(config, rel, "BTC").api}/tx/send`, {
+      rawtx
+    })
+    return data.data.txid
 }
 
-export const send = ({
+export const send = async ({
   from, rel, address, amount, wif, options
 }) => {
   const base = "BTC";
-  return new Promise(async (resolve, reject) => {
-    const multiply_by = rel == 'BTC' ? 1 : getAtomicValue(options.config, rel, base)
-    const utxos = await getUtxos({ config: options.config, rel: rel, address: from })
-    try {
-      const txid = await broadcastTx({
-        utxos,
-        from: from,
-        to: address,
-        amount: amount * getAtomicValue(options.config, rel, base),
-        wif: wif,
-        fee: options.fees * multiply_by,
-        rel: rel,
-        config: options.config
-      })
-      resolve(txid)
-    } catch (e) {
-      reject(e)
-    }
-  });
+  const multiply_by = rel == 'BTC' ? 1 : getAtomicValue(options.config, rel, base)
+  const utxos = await getUtxos({ config: options.config, rel: rel, address: from })
+  const txid = await broadcastTx({
+    utxos,
+    from: from,
+    to: address,
+    amount: amount * getAtomicValue(options.config, rel, base),
+    wif: wif,
+    fee: options.fees * multiply_by,
+    rel: rel,
+    config: options.config
+  })
+  return txid
 }
 
 export const getTxs = async ({config, address, rel, base}) => {

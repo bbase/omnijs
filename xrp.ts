@@ -38,11 +38,9 @@ export const send = ({
 }) => {
     const { api, node } = getConfig(options.config, base, base);
     let rapi;
-return new Promise(async (resolve, reject) => {
-    try{
-        rapi = new RippleAPI({ server:`wss://s.altnet.rippletest.net:51233`});
-        await rapi.connect();
-    } catch (e) { reject(e)}
+    
+    rapi = new RippleAPI({ server:`wss://s.altnet.rippletest.net:51233`});
+    await rapi.connect();
     const payment = {
         "source": {
             "address": from,
@@ -59,10 +57,7 @@ return new Promise(async (resolve, reject) => {
             }
         }
     };
-    let prepared;
-    try{
-        prepared = await rapi.preparePayment(from, payment);
-    }catch(e){ reject(e) }
+    const prepared = await rapi.preparePayment(from, payment);
 
     rapi = new RippleAPI();
     const tx = await rapi.sign(prepared.txJSON, wif)
@@ -70,6 +65,5 @@ return new Promise(async (resolve, reject) => {
         node,
         tx_blob: tx.signedTransaction
     });
-        resolve(data.data.result.tx_json.hash);
-    });
+    return data.data.result.tx_json.hash;
 }

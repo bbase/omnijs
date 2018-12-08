@@ -57,7 +57,7 @@ class OmniJs {
     return { wif, address, publicKey }
   }
 
-  send = (
+  send = async (
     from: string,
     address: string,
     amount: number,
@@ -65,57 +65,43 @@ class OmniJs {
     options?: any
   ) => {
     const { rel, base } = this;
-    return new Promise(async (resolve, reject) => {
       let txid;
-      try{
-        switch (base) {
-          case 'ETH':
-          case 'VET':
-            //options.gasLimit *= 1000000000;
-            options.gasPrice *= 1000000000;
-            if (rel == base) {
-              txid = await G_IMPORT[base.toLowerCase()].send({ from, rel, address, amount, wif, options });
-            } else {
-              txid = await sendERC20({ from, rel, base, address, amount, wif, options });
-            }
-            break;
-          default:
-            txid = await G_IMPORT[base.toLowerCase()].send({ from, rel, base, address, amount, wif, options });
-          break
-        }
-        resolve({txid})
-      }catch(e){reject(e)}
-    })
+      switch (base) {
+        case 'ETH':
+        case 'VET':
+          //options.gasLimit *= 1000000000;
+          options.gasPrice *= 1000000000;
+          if (rel == base) {
+            txid = await G_IMPORT[base.toLowerCase()].send({ from, rel, address, amount, wif, options });
+          } else {
+            txid = await sendERC20({ from, rel, base, address, amount, wif, options });
+          }
+          break;
+        default:
+          txid = await G_IMPORT[base.toLowerCase()].send({ from, rel, base, address, amount, wif, options });
+        break
+      }
+      return {txid}
   }
-  getTxs = (address: string, config) => {
+  getTxs = async (address: string, config) => {
     const { rel, base } = this;
 
     let data, n_tx, txs = [];
     const api = getConfig(config, rel, base).api;
     let decimals = getAtomicValue(config, rel, base);
-
-    return new Promise(async (resolve, reject) => {
-        try{
-          txs = await G_IMPORT[base.toLowerCase()].getTxs({ config, rel, base, address });
-          resolve({txs, n_tx});
-        }catch(e){ reject(e)}
-    });
-}
-  getBalance = (address: string, config) => {
+    txs = await G_IMPORT[base.toLowerCase()].getTxs({ config, rel, base, address });
+    return {txs, n_tx};
+  }
+  getBalance = async (address: string, config) => {
     const { rel, base } = this;
 
     const api = getConfig(config, rel, base).api;
     let data;
     let balances = {};
     let balance: number = 0;
-    return new Promise(async (resolve, reject) => {
-      try {
-        balances =  await G_IMPORT[base.toLowerCase()].getBalance({ config, rel, base, address });
-        resolve(balances); 
-  }catch(e){
-    reject(e);
-  }  });
-}
+    balances =  await G_IMPORT[base.toLowerCase()].getBalance({ config, rel, base, address });
+    return balances;
+  }
 }
 
 export default OmniJs

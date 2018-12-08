@@ -19,32 +19,24 @@ export const getWeb3 = (rpc) => {
     return new Web3(new Web3.providers.HttpProvider(rpc, web3Options));
 }
 
-export const send = ({
+export const send = async ({
     from, rel, address, amount, wif, options
 }) => {
     const { rpc } = getConfig(options.config, rel, rel);
     const web3 = getWeb3(rpc)
-    return new Promise(async (resolve, reject) => {
-        web3.eth
-        .getTransactionCount(from)
-        .then(txCount => {
-            const txData = {
-                    nonce: web3.utils.toHex(txCount.toString()),
-                    gasLimit: web3.utils.toHex(options.gasLimit.toString()),
-                    gasPrice: web3.utils.toHex(options.gasPrice.toString()),
-                    to: address,
-                    from: from,
-                    value: web3.utils.toHex(amount * getAtomicValue(options.config, rel, rel).toString())
-                }
-                sendSignedWeb3(wif, txData, (err, result) => {
-                    if (err) reject(err)
-                    resolve(result)
-                }, web3)
-            })
-            .catch(e => {
-                reject(e)
-            })
-    });
+    const txCount = await web3.eth.getTransactionCount(from);
+    const txData = {
+        nonce: web3.utils.toHex(txCount.toString()),
+        gasLimit: web3.utils.toHex(options.gasLimit.toString()),
+        gasPrice: web3.utils.toHex(options.gasPrice.toString()),
+        to: address,
+        from: from,
+        value: web3.utils.toHex(amount * getAtomicValue(options.config, rel, rel).toString())
+    }
+    sendSignedWeb3(wif, txData, (err, result) => {
+        if (err) throw err
+        return result
+    }, web3)
 }
 
 export const sendERC20 = ({
@@ -52,33 +44,25 @@ export const sendERC20 = ({
 }) => {
     const { rpc } = getConfig(options.config, base, base);
     const web3 = getWeb3(rpc);
-    return new Promise(async (resolve, reject) => {
-        const asset = options.config[base].assets[rel];
+    const asset = options.config[base].assets[rel];
+    const contract = new web3.eth.Contract(transferABI, asset.hash);
+    const data = contract.methods.transfer(address, amount * (10 ** asset.decimals)).encodeABI();
 
-        let contract = new web3.eth.Contract(transferABI, asset.hash);
-        const data = contract.methods.transfer(address, amount * (10 ** asset.decimals)).encodeABI();
+    const txCount = await web3.eth.getTransactionCount(from)
+    const txData = {
+        nonce: web3.utils.toHex(txCount.toString()),
+        gasLimit: web3.utils.toHex(options.gasLimit.toString()),
+        gasPrice: web3.utils.toHex(options.gasPrice.toString()),
+        to: asset.hash,
+        from: from,
+        data: data,
+        value: web3.utils.toHex(0)
+    }
+    sendSignedWeb3(wif, txData, (err, result) => {
+        if (err) throw err
+        return result
+    }, web3)
 
-        web3.eth
-            .getTransactionCount(from)
-            .then(txCount => {
-                const txData = {
-                    nonce: web3.utils.toHex(txCount.toString()),
-                    gasLimit: web3.utils.toHex(options.gasLimit.toString()),
-                    gasPrice: web3.utils.toHex(options.gasPrice.toString()),
-                    to: asset.hash,
-                    from: from,
-                    data: data,
-                    value: web3.utils.toHex(0)
-                }
-                sendSignedWeb3(wif, txData, (err, result) => {
-                    if (err) reject(err)
-                    resolve(result)
-                }, web3)
-            })
-            .catch(e => {
-                reject(e)
-            })     
-    });
 }
 
 export const sendSignedWeb3 = (wif: string, txData: any, cb: any, web3: any) => {

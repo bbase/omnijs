@@ -118,51 +118,39 @@ export const sendTransaction = async (sendEntries: Array<SendEntryType>, opts) =
     })
     Neon.add.network(net)
     const netNeoscan = new api.neoscan.instance("Net");
-
-    return new Promise(async(resolve, reject) => {
-        try {
-            const { response } = await makeRequest(sendEntries, {
-                net,
-                tokensBalanceMap: opts.balances,
-                address: fromAddress,
-                publicKey,
-                fees: opts.fees,
-                account: new wallet.Account(wif),
-                privateKey: new wallet.Account(wif).privateKey,
-                signingFunction: null,
-                api: netNeoscan,
-            })
-            if (!response.result) {
-                reject("Failed")
-            }
-            resolve(response)
-        } catch (err) {
-            reject(err)
-        }
-    })    
+    const { response } = await makeRequest(sendEntries, {
+        net,
+        tokensBalanceMap: opts.balances,
+        address: fromAddress,
+        publicKey,
+        fees: opts.fees,
+        account: new wallet.Account(wif),
+        privateKey: new wallet.Account(wif).privateKey,
+        signingFunction: null,
+        api: netNeoscan,
+    })
+    if (!response.result) {
+        throw new Error("Failed")
+    }
+    return response
 }
 
 export const send = ({
     base, from, rel, address, amount, wif, options
 }) => {
-    return new Promise(async (resolve, reject) => {
     const api = getConfig(options.config, rel, base).api;
-
     const balance = (await axios.get(`${api}/get_balance/${address}`)).data;
-    try {
-        const result = await sendTransaction([{ amount, address, symbol: rel }],
-            {
-                balances: balance,
-                wif,
-                address: from,
-                publicKey: options.publicKey,
-                fees: options.fees,
-                base
-            });
-            //@ts-ignore
-        resolve(result.txid);
-    } catch (e) { reject(e); }
-    })
+    const result = await sendTransaction([{ amount, address, symbol: rel }],
+        {
+            balances: balance,
+            wif,
+            address: from,
+            publicKey: options.publicKey,
+            fees: options.fees,
+            base
+        });
+    //@ts-ignore
+    return result.txid;
 }
 
 
