@@ -18,7 +18,8 @@ export const getWeb3 = (rpc) => {
 
     return new Web3(new Web3.providers.HttpProvider(rpc, web3Options));
 }
-export const sendETH = ({
+
+export const send = ({
     from, rel, address, amount, wif, options
 }) => {
     const { rpc } = getConfig(options.config, rel, rel);

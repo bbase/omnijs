@@ -1,6 +1,6 @@
 import bip39 from 'bip39'
 import { getRootNode, deriveAccount, getWallet } from './keys'
-import { sendETH, sendERC20 } from './eth'
+import { sendERC20 } from './eth'
 
 import * as btc from './btc';
 import * as eth from './eth';
@@ -70,10 +70,11 @@ class OmniJs {
       try{
         switch (base) {
           case 'ETH':
+          case 'VET':
             //options.gasLimit *= 1000000000;
             options.gasPrice *= 1000000000;
             if (rel == base) {
-              txid = await sendETH({ from, rel, address, amount, wif, options });
+              txid = await G_IMPORT[base.toLowerCase()].send({ from, rel, address, amount, wif, options });
             } else {
               txid = await sendERC20({ from, rel, base, address, amount, wif, options });
             }
