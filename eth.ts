@@ -12,6 +12,7 @@ import {
 } from 'app/constants';
 const Tx = require('ethereumjs-tx')
 import axios from 'axios';
+import BigNumber from 'bignumber.js'
 
 export const getWeb3 = (rpc) => {
     //@ts-ignore
@@ -31,7 +32,7 @@ export const send = async ({
         gasPrice: web3.utils.toHex(options.gasPrice.toString()),
         to: address,
         from: from,
-        value: web3.utils.toHex(amount * getAtomicValue(options.config, rel, rel).toString())
+        value: web3.utils.toHex((new BigNumber(amount).times(getAtomicValue(options.config, rel, rel))).toString(10))
     }
     sendSignedWeb3(wif, txData, (err, result) => {
         if (err) throw err
@@ -47,7 +48,7 @@ export const sendERC20 = async ({
     const asset = options.config[base].assets[rel];
     const decimals = getAtomicValue(options.config, rel, base);    
     const contract = new web3.eth.Contract(transferABI, asset.hash);
-    const data = contract.methods.transfer(address, amount * decimals).encodeABI();
+    const data = contract.methods.transfer(address, new BigNumber(amount).times(decimals)).encodeABI();
 
     const txCount = await web3.eth.getTransactionCount(from)
     const txData = {

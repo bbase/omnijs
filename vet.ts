@@ -12,6 +12,7 @@ import {
     RLP,
     Transaction
 } from 'thor-devkit'
+import BigNumber from 'bignumber.js'
 
 const Web3 = require("web3");
 export const getWeb3 = (rpc) => {
@@ -41,15 +42,14 @@ export const send = async ({
     from, rel, base, address, amount, wif, options
 }) => {
     const { rpc } = getConfig(options.config, rel, rel);
-    const web3 = getWeb3(rpc)
-    
+    const web3 = getWeb3(rpc)    
 
     let clauses =  [{
         to: address,
-        value: (amount * getAtomicValue(options.config, rel, base)).toString(),
+        value: (new BigNumber(amount).times(getAtomicValue(options.config, rel, base))).toString(10),
         data: '0x'
     }]
-    return await sendTransaction({clauses, web3, wif });
+    return await sendTransaction({clauses, web3, wif, gasLimit: null });
 }
 export const sendERC20 = async ({
     base, from, rel, address, amount, wif, options
@@ -60,21 +60,21 @@ export const sendERC20 = async ({
     const asset = options.config[base].assets[rel];
     const decimals = getAtomicValue(options.config, rel, base);
     const contract = new web3.eth.Contract(transferABI, asset.hash);
-    const data = contract.methods.transfer(address, amount * decimals).encodeABI();
+    const data = contract.methods.transfer(address, new BigNumber(amount).times(decimals) ).encodeABI();
 
     let clauses =  [{
         to: asset.hash,
         value: (0).toString(),
         data,
     }]
-    return await sendTransaction({clauses, web3, wif });
+    return await sendTransaction({clauses, web3, wif, gasLimit: 65000 });
 }
 
-const sendTransaction = async ({clauses, web3, wif }) => {
+const sendTransaction = async ({clauses, web3, wif, gasLimit }) => {
     const chainTag = await web3.eth.getChainTag();
     const blockRef = await web3.eth.getBlockRef();
 
-    const gas = Transaction.intrinsicGas(clauses)
+    const gas = gasLimit || Transaction.intrinsicGas(clauses)
     const gasPriceCoef = 128;
     const expiration = 720;
     const body = {
