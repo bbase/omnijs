@@ -45,8 +45,9 @@ export const sendERC20 = ({
     const { rpc } = getConfig(options.config, base, base);
     const web3 = getWeb3(rpc);
     const asset = options.config[base].assets[rel];
+    const decimals = getAtomicValue(options.config, rel, base);    
     const contract = new web3.eth.Contract(transferABI, asset.hash);
-    const data = contract.methods.transfer(address, amount * (10 ** asset.decimals)).encodeABI();
+    const data = contract.methods.transfer(address, amount * decimals).encodeABI();
 
     const txCount = await web3.eth.getTransactionCount(from)
     const txData = {
