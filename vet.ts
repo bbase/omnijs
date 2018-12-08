@@ -51,7 +51,7 @@ export const send = async ({
     }]
     return await sendTransaction({clauses, web3, wif });
 }
-export const sendERC20 = ({
+export const sendERC20 = async ({
     base, from, rel, address, amount, wif, options
 }) => {
     const { rpc } = getConfig(options.config, base, base);

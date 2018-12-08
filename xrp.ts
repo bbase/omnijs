@@ -33,7 +33,7 @@ export const getTxs = async ({ address, rel, base, config }) => {
     }
     return txs;
 }
-export const send = ({
+export const send = async ({
     base, from, rel, address, amount, wif, options
 }) => {
     const { api, node } = getConfig(options.config, base, base);

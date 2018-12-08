@@ -135,7 +135,7 @@ export const sendTransaction = async (sendEntries: Array<SendEntryType>, opts) =
     return response
 }
 
-export const send = ({
+export const send = async ({
     base, from, rel, address, amount, wif, options
 }) => {
     const api = getConfig(options.config, rel, base).api;
