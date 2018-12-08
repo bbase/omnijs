@@ -1,7 +1,7 @@
 import bip32 from 'bip32'
 import bitcoin from 'bitcoinjs-lib'
 import bitcoinSecp256r1 from 'bitcoinjs-lib-secp256r1'
-//import { wallet as NeoWallet } from '@cityofzion/neon-core'
+import { wallet as NeoWallet } from '@cityofzion/neon-core'
 import ethUtil from 'ethereumjs-util'
 import * as nanocurrency from 'nanocurrency';
 import { toBitcoinJS } from 'app/constants';
@@ -65,9 +65,9 @@ export const getWallet = (key: any, rel: string, base: string, config) => {
       break
     case 'NEO':
       wif = key.keyPair.toWIF()
-      //const account = new NeoWallet.Account(wif)
-      //address = account.address
-      //publicKey = account.publicKey 
+      const account = new NeoWallet.Account(wif)
+      address = account.address
+      publicKey = account.publicKey 
     break
     case 'NANO':
       wif = nanocurrency.deriveSecretKey(key, 0)
