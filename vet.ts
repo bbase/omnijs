@@ -13,26 +13,31 @@ import {
     Transaction
 } from 'thor-devkit'
 import BigNumber from 'bignumber.js'
+import web3Utils from 'web3-utils';
 
 const Web3 = require("web3");
 export const getWeb3 = (rpc) => {
     return thorify(new Web3(), rpc);
 }
 export const getTxs = async ({ config, address, rel, base }) => {
-    const api = getConfig(config, rel, base).api;
+    const {api} = getConfig(config, rel, base);
     const txs = [];
+    const asset = rel == base ? undefined : config[base].assets[rel];
+    const path = rel == base ? 'transactions' : 'tokenTransfers';
     
-    const data = await axios.get(`${api}/transactions?address=${address}&count=10&offset=0`);
-    data.data.transactions.map(o => {
-        const tx = {
-            from: o.origin,
-            hash: o.id,
-            value: o.totalValue / getAtomicValue(config, rel, base),
-            kind: o.origin == address ? "sent" : "got",
-            fee: 0,
-            timestamp: o.timestamp,
-        };
-        txs.push(tx);
+    const data = await axios.get(`${api}/${path}?address=${address}&count=10&offset=0`);
+    data.data[path].map(o => {
+        if(base == rel || (asset.hash == o.contractAddress && !o.transaction.reverted) ){
+            const tx = {
+                from: o.origin,
+                hash: rel == base ? o.id : o.txId,
+                value: (rel == base ? o.totalValue : Number(web3Utils.hexToNumberString(o.amount)) ) / getAtomicValue(config, rel, base),
+                kind: o.origin == address ? "sent" : "got",
+                fee: 0,
+                timestamp: o.timestamp,
+            };
+            txs.push(tx);
+        }
     })
     
     return txs;
