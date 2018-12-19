@@ -32,7 +32,7 @@ export const getRootNode = (seed: any, rel: string, base: string, config) => {
   }
   return rootNode
 }
-export const deriveAccount = (
+export const getChildNode = (
   rootNode: any,
   account: number,
   change: number,
@@ -45,38 +45,38 @@ export const deriveAccount = (
   return typeof rootNode == "object" ? rootNode.derivePath(bip44path) : rootNode;
 }
 
-export const getWallet = (key: any, rel: string, base: string, config) => {
+export const getWallet = (childNode: any, rel: string, base: string, config) => {
   let wif, address, publicKey
   
   switch (base) {
     case 'BTC':
       const network = toBitcoinJS(config[rel].network);    
       const derivedWallet = bitcoin.payments.p2pkh({
-        pubkey: key.publicKey,
+        pubkey: childNode.publicKey,
         network: network
       })
-      const firstKeyECPair = bitcoin.ECPair.fromPrivateKey(key.privateKey, {
+      const firstKeyECPair = bitcoin.ECPair.fromPrivateKey(childNode.privateKey, {
         network
       })
 
       wif = firstKeyECPair.toWIF()
       address = derivedWallet.address
-      publicKey = key.publicKey
+      publicKey = childNode.publicKey
       break
     case 'NEO':
-      wif = key.keyPair.toWIF()
+      wif = childNode.keyPair.toWIF()
       const account = new NeoWallet.Account(wif)
       address = account.address
       publicKey = account.publicKey 
     break
     case 'NANO':
-      wif = nanocurrency.deriveSecretKey(key, 0)
+      wif = nanocurrency.deriveSecretKey(childNode, 0)
       publicKey = nanocurrency.derivePublicKey(wif)
       address = nanocurrency.deriveAddress(publicKey)
     break;  
     case 'XRP':
-      wif = key.privateKey.toString(`hex`)
-      publicKey = key.publicKey.toString(`hex`)
+      wif = childNode.privateKey.toString(`hex`)
+      publicKey = childNode.publicKey.toString(`hex`)
       address = rplk.deriveAddress(publicKey)
     break;  
     case 'XMR':
@@ -98,7 +98,7 @@ export const getWallet = (key: any, rel: string, base: string, config) => {
     case 'VET':
       //eth and rest of its shitcoins
       //var privKeyBuffer = key.__d.toBuffer(32)
-      var privKeyBuffer = key.__d;
+      var privKeyBuffer = childNode.__d;
       var privkey: string = privKeyBuffer.toString('hex')
       var addressBuffer = ethUtil.privateToAddress(privKeyBuffer)
       var hexAddress = addressBuffer.toString('hex')

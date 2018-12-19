@@ -1,5 +1,5 @@
 import bip39 from 'bip39'
-import { getRootNode, deriveAccount, getWallet } from './keys'
+import { getRootNode, getChildNode, getWallet } from './keys'
 
 import * as btc from './btc';
 import * as eth from './eth';
@@ -18,7 +18,6 @@ import {
 
 export const generateSeed = (_mnemonic?: string, passphrase: string = '', options?: any) => {
   const mnemonic = _mnemonic ? _mnemonic : bip39.generateMnemonic(256)
-    //const seed = bip39.mnemonicToSeed(mnemonic, passphrase).slice(0,32)
   const seed = bip39.mnemonicToSeed(mnemonic, passphrase)
     
   const { wif, address, publicKey } = generatePKey(options.rel, options.base, options.config, seed);
@@ -38,8 +37,8 @@ export const generatePKey = (
     index: number = 0
   ) => {
     const rootNode = getRootNode(seed, rel, base, config)
-    const key = deriveAccount(rootNode, account, change, index, rel, config)
-    const { wif, address, publicKey } = getWallet(key, rel, base, config)
+    const childNode = getChildNode(rootNode, account, change, index, rel, config)
+    const { wif, address, publicKey } = getWallet(childNode, rel, base, config)
     
     return { wif, address, publicKey }
   }
