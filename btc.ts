@@ -1,14 +1,13 @@
-import axios from 'axios'
-import { getAtomicValue, toBitcoinJS, getConfig } from 'app/constants'
-import bitcoin from 'bitcoinjs-lib'
-
+import { getAtomicValue, getConfig, toBitcoinJS } from "app/constants";
+import axios from "axios";
+import bitcoin from "bitcoinjs-lib";
 
 export const getUtxos = async ({ config, rel, address }) => {
   const data = await axios.post(`${getConfig(config, rel, "BTC").api}/addrs/utxo`, {
-    addrs: address
-  })
-  return data.data
-}
+    addrs: address,
+  });
+  return data.data;
+};
 export const broadcastTx = async ({
   from,
   rel,
@@ -17,66 +16,66 @@ export const broadcastTx = async ({
   amount,
   wif,
   fee,
-  config
+  config,
 }) => {
-    const network = toBitcoinJS(config[rel].network)
-    var key = bitcoin.ECPair.fromWIF(wif, network)
-    var tx = new bitcoin.TransactionBuilder(network)
-    let total = 0
-    for (let utx of utxos) {
-      tx.addInput(utx.txid, utx.vout)
-      total += utx.satoshis
+    const network = toBitcoinJS(config[rel].network);
+    const key = bitcoin.ECPair.fromWIF(wif, network);
+    const tx = new bitcoin.TransactionBuilder(network);
+    let total = 0;
+    for (const utx of utxos) {
+      tx.addInput(utx.txid, utx.vout);
+      total += utx.satoshis;
     }
-    tx.addOutput(to, amount)
-    const change = total - (amount + fee)
-    if (change) tx.addOutput(from, change)
+    tx.addOutput(to, amount);
+    const change = total - (amount + fee);
+    if (change) { tx.addOutput(from, change); }
 
     utxos.forEach((v, i) => {
-      tx.sign(i, key)
-    })
-    const rawtx = tx.build().toHex()
+      tx.sign(i, key);
+    });
+    const rawtx = tx.build().toHex();
     const data = await axios.post(`${getConfig(config, rel, "BTC").api}/tx/send`, {
-      rawtx
-    })
-    return data.data.txid
-}
+      rawtx,
+    });
+    return data.data.txid;
+};
 
 export const send = async ({
-  from, rel, address, amount, wif, options
+  from, rel, address, amount, wif, options,
 }) => {
   const base = "BTC";
-  const multiply_by = rel == 'BTC' ? 1 : getAtomicValue(options.config, rel, base)
-  const utxos = await getUtxos({ config: options.config, rel: rel, address: from })
+  const multiply_by = rel == "BTC" ? 1 : getAtomicValue(options.config, rel, base);
+  const utxos = await getUtxos({ config: options.config, rel, address: from });
   const txid = await broadcastTx({
     utxos,
-    from: from,
+    from,
     to: address,
     amount: amount * getAtomicValue(options.config, rel, base),
-    wif: wif,
+    wif,
     fee: options.fees * multiply_by,
-    rel: rel,
-    config: options.config
-  })
-  return txid
-}
+    rel,
+    config: options.config,
+  });
+  return txid;
+};
 
 export const getTxs = async ({config, address, rel, base}) => {
   const api = getConfig(config, rel, base).api;
   const txs = [];
   const data = await axios.get(`${api}/txs/?address=${address}`);
-  data.data.txs.map(o => {
+  data.data.txs.map((o) => {
     const from = o.vin[0].addr;
     let value = 0;
     let kind = "got";
-    let fee = o.fees;
+    const fee = o.fees;
 
     if (from != address) {
       kind = "got";
-      o.vout.map(ox => {
+      o.vout.map((ox) => {
         if (ox.scriptPubKey.addresses && ox.scriptPubKey.addresses[0] == address) {
           value += ox.value;
         }
-      })
+      });
     } else {
       kind = "sent";
       value = o.vout[0].value;
@@ -92,12 +91,12 @@ export const getTxs = async ({config, address, rel, base}) => {
       timestamp: o.blocktime,
     };
     txs.push(tx);
-  })  
+  });
   return txs;
-}
+};
 export const getBalance = async ({config, rel, base, address}) => {
   const api = getConfig(config, rel, base).api;
   const data = await axios.get(`${api}/addr/${address}`);
   const balance = data.data.balance;
   return { [rel]: { balance } };
-}
+};

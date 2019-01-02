@@ -1,93 +1,78 @@
-import Web3 from 'web3';
-var web3Options = {
-    timeout: 20000, // milliseconds,
-    headers: [{ name: 'Access-Control-Allow-Origin', value: '*' }]
-};
-import { 
-    getConfig,
-    getAtomicValue,
-    transferABI,
+import {
     etherscan_api_key,
+    getAtomicValue,
+    getConfig,
+    transferABI,
 
-} from 'app/constants';
-const Tx = require('ethereumjs-tx')
-import axios from 'axios';
-import BigNumber from 'bignumber.js'
+} from "app/constants";
+import axios from "axios";
+import {ethers} from "ethers";
+import { BalancesType, ethTransactionType, sendType, TransactionType, txParamsType } from "./interfaces";
 
-export const getWeb3 = (rpc) => {
-    //@ts-ignore
+const BN = require("bn.js");
 
-    return new Web3(new Web3.providers.HttpProvider(rpc, web3Options));
-}
-
+export const getWeb3 = (rpc: string): ethers.providers.JsonRpcProvider => {
+    return new ethers.providers.JsonRpcProvider(rpc);
+};
 export const send = async ({
-    from, rel, address, amount, wif, options
-}) => {
+    from, rel, address, amount, wif, options,
+}: sendType): Promise<string> => {
     const { rpc } = getConfig(options.config, rel, rel);
-    const web3 = getWeb3(rpc)
-    const txCount = await web3.eth.getTransactionCount(from);
-    const txData = {
-        nonce: web3.utils.toHex(txCount.toString()),
-        gasLimit: web3.utils.toHex(options.gasLimit.toString()),
-        gasPrice: web3.utils.toHex(options.gasPrice.toString()),
+    const web3 = getWeb3(rpc);
+    const txCount = await web3.getTransactionCount(from);
+    const transaction: ethTransactionType = {
+        nonce: ethers.utils.hexlify(txCount.toString()),
+        gasLimit: ethers.utils.hexlify(options.gasLimit.toString()),
+        gasPrice: ethers.utils.hexlify(options.gasPrice.toString()),
         to: address,
-        from: from,
-        value: web3.utils.toHex((new BigNumber(amount).times(getAtomicValue(options.config, rel, rel))).toString(10))
-    }
-    sendSignedWeb3(wif, txData, (err, result) => {
-        if (err) throw err
-        return result
-    }, web3)
-}
+        from,
+        value: ethers.utils.hexlify((new BN(amount).mul(getAtomicValue(options.config, rel, rel))).toString(10)),
+    };
+    return sendSignedWeb3(wif, transaction, web3);
+};
 
 export const sendERC20 = async ({
-    base, from, rel, address, amount, wif, options
-}) => {
+    base, from, rel, address, amount, wif, options,
+}: sendType): Promise<string>  => {
     const { rpc } = getConfig(options.config, base, base);
     const web3 = getWeb3(rpc);
     const asset = options.config[base].assets[rel];
-    const decimals = getAtomicValue(options.config, rel, base);    
-    const contract = new web3.eth.Contract(transferABI, asset.hash);
-    const data = contract.methods.transfer(address, new BigNumber(amount).times(decimals)).encodeABI();
+    const decimals = getAtomicValue(options.config, rel, base);
+    const contract = new ethers.Contract(asset.hash, transferABI, web3);
+    const data = contract.transfer(address, new BN(amount).mul(decimals)).encodeABI();
 
-    const txCount = await web3.eth.getTransactionCount(from)
-    const txData = {
-        nonce: web3.utils.toHex(txCount.toString()),
-        gasLimit: web3.utils.toHex(options.gasLimit.toString()),
-        gasPrice: web3.utils.toHex(options.gasPrice.toString()),
+    const txCount = await web3.getTransactionCount(from);
+    const transaction: ethTransactionType = {
+        nonce: ethers.utils.hexlify(txCount.toString()),
+        gasLimit: ethers.utils.hexlify(options.gasLimit.toString()),
+        gasPrice: ethers.utils.hexlify(options.gasPrice.toString()),
         to: asset.hash,
-        from: from,
-        data: data,
-        value: web3.utils.toHex(0)
-    }
-    sendSignedWeb3(wif, txData, (err, result) => {
-        if (err) throw err
-        return result
-    }, web3)
+        from,
+        data,
+        value: ethers.utils.hexlify(0),
+    };
+    return sendSignedWeb3(wif, transaction, web3);
+};
 
-}
+export const sendSignedWeb3 = async (wif: string, transaction: ethTransactionType, web3: ethers.providers.JsonRpcProvider): Promise<string> => {
+    const wallet = new ethers.Wallet(wif);
+    const signedTransaction: string = await wallet.sign(transaction);
+    const tx = await web3.sendTransaction(signedTransaction);
+    return tx.hash;
+};
 
-export const sendSignedWeb3 = (wif: string, txData: any, cb: any, web3: any) => {
-    const privateKey = new Buffer(wif.substr(2), 'hex')
-    const transaction = new Tx(txData)
-    transaction.sign(privateKey)
-    const serializedTx = transaction.serialize().toString('hex')
-    web3.eth.sendSignedTransaction('0x' + serializedTx, cb)
-}
-
-
-export const getTxs = async ({ address, rel, base, config }) => {
+export const getTxs = async ({ address, rel, base, config }: txParamsType): Promise<TransactionType[]> => {
     const { api } = getConfig(config, base, base);
     const txs = [];
-    
+
     let isErc20 = false;
-    if (rel != base) isErc20 = true;
+    if (rel != base) { isErc20 = true; }
 
     const data = await axios.get(`${api}/?module=account&action=${isErc20 ? "tokentx" : "txlist" }&address=${address}&startblock=0&endblock=99999999&page=1&offset=10&sort=desc&apikey=${etherscan_api_key}`);
     const decimals = getAtomicValue(config, base, base);
-    
-    data.data.result.map(o => {        
-        const tx = {
+
+    data.data.result.map((o) => {
+        const tx: TransactionType = {
             from: o.from,
             hash: o.hash,
             confirmations: o.confirmations,
@@ -99,27 +84,28 @@ export const getTxs = async ({ address, rel, base, config }) => {
         };
 
         txs.push(tx);
-    })
+    });
     return txs;
-}
+};
 
-export const getBalance = async ({ config, address, rel, base }) => {
+export const getBalance = async ({ config, address, rel, base }: txParamsType): Promise<BalancesType> => {
     const { rpc, api_tokens } = getConfig(config, rel, base);
     const web3 = getWeb3(rpc);
 
-    let balances = {};
+    const balances = {};
     const tokens = [];
-    for (let x in config[base].assets){
+    for (const x in config[base].assets) {
         tokens.push(config[base].assets[x].hash);
     }
-    const data0 = await axios.post(`${api_tokens}`,{address, tokens});
+    const data0 = await axios.post(`${api_tokens}`, {address, tokens});
     let i = 0;
-    for (let x in config[base].assets){
+    for (const x in config[base].assets) {
         const c = config[base].assets[x];
         const v = data0.data[i][c.hash];
         balances[x] = { balance: v / getAtomicValue(config, x, base) };
         i++;
     }
-    balances[base] = { balance: (await web3.eth.getBalance(address)) / getAtomicValue(config, rel, base) };
+    const b: any = await web3.getBalance(address);
+    balances[base] = { balance: b / getAtomicValue(config, rel, base) };
     return balances;
-}
+};

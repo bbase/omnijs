@@ -1,37 +1,38 @@
-import {    
-    getConfig,
+import {
     getAtomicValue,
-} from 'app/constants'
-import axios from 'axios';
-import * as nanocurrency from 'nanocurrency';
-import BigNumber from 'bignumber.js'
+    getConfig,
+} from "app/constants";
+import axios from "axios";
+import * as nanocurrency from "nanocurrency";
+
+const BN = require("bn.js");
 
 export const getBalance = async ({ config, address, rel, base }) => {
     const api = getConfig(config, rel, base).api;
 
     const data = await axios.post(`${api}`, {
-        "action": "account_balance",
-        "account": address,
+        action: "account_balance",
+        account: address,
     });
-    //@ts-ignore
-    const balance = convert(data.data.balance, { from: 'raw', to: 'NANO' });
-    //@ts-ignore
-    const pending = convert(data.data.pending, { from: 'raw', to: 'NANO' });
-    const balances = { [rel]: { balance: +balance, pending: +pending, balance_raw: data.data.balance, pending_raw: data.data.pending } }
-    
+    // @ts-ignore
+    const balance = convert(data.data.balance, { from: "raw", to: "NANO" });
+    // @ts-ignore
+    const pending = convert(data.data.pending, { from: "raw", to: "NANO" });
+    const balances = { [rel]: { balance: +balance, pending: +pending, balance_raw: data.data.balance, pending_raw: data.data.pending } };
+
     return balances;
-}
+};
 
 export const send = async ({ from, base, rel, address, amount, wif, options }) => {
   const { api, rep } = getConfig(options.config, rel, base);
   const d4 = await axios.post(`${api}`, {
-      "action": "account_representative",
-      "account": from,
+      action: "account_representative",
+      account: from,
   });
 
   const d3 = await axios.post(`${api}`, {
-      "action": "accounts_frontiers",
-      "accounts": [from],
+      action: "accounts_frontiers",
+      accounts: [from],
   });
 
   const representative = d4.data.representative || rep;
@@ -39,10 +40,10 @@ export const send = async ({ from, base, rel, address, amount, wif, options }) =
   const previous = frontier || "0000000000000000000000000000000000000000000000000000000000000000";
   const link = address;
   const w1 = await axios.post(`${api}`, {
-      "action": "work_generate",
-      "hash": frontier || options.publicKey
+      action: "work_generate",
+      hash: frontier || options.publicKey,
   });
-  const bal = new BigNumber(options.balance.balance_raw).minus(amount*getAtomicValue(options.config, rel, base));
+  const bal = new BN(options.balance.balance_raw).sub(new BN(amount * getAtomicValue(options.config, rel, base)));
 
   const unsigned_block = {
       link,
@@ -51,48 +52,47 @@ export const send = async ({ from, base, rel, address, amount, wif, options }) =
       balance: bal.toString(10),
       representative,
   };
-  //@ts-ignore
+  // @ts-ignore
   const { hash, block } = nanocurrency.createBlock(wif, unsigned_block);
   const r1 = await axios.post(`${api}`, {
-      "action": "process",
+      action: "process",
       block: JSON.stringify(block),
   });
-  return hash
-}
+  return hash;
+};
 
 export const pendingSyncNano = async ({ rel, base, config, balance, pending, address, options }) => {
-    
+
     const { api, rep } = getConfig(config, rel, base);
     if (parseFloat(pending) > 0) {
         const d1 = await axios.post(`${api}`, {
-            "action": "accounts_pending",
-            "accounts": [address],
-            "source": "true",
+            action: "accounts_pending",
+            accounts: [address],
+            source: "true",
         });
         const d4 = await axios.post(`${api}`, {
-            "action": "account_representative",
-            "account": address,
+            action: "account_representative",
+            account: address,
         });
 
         const d3 = await axios.post(`${api}`, {
-            "action": "accounts_frontiers",
-            "accounts": [address],
+            action: "accounts_frontiers",
+            accounts: [address],
         });
 
         const representative = d4.data.representative || rep;
         const frontier = d3.data.frontiers[address];
 
-
-        for (let x1 in d1.data.blocks[address]) {
+        for (const x1 of Object.keys(d1.data.blocks[address])) {
             const o = d1.data.blocks[address][x1];
             const previous = frontier || "0000000000000000000000000000000000000000000000000000000000000000";
             const link = x1;
             const w1 = await axios.post(`${api}`, {
-                "action": "work_generate",
-                "hash": frontier || options.publicKey
+                action: "work_generate",
+                hash: frontier || options.publicKey,
             });
 
-            const bal = new BigNumber(balance).plus(o.amount);
+            const bal = new BN(balance).add(o.amount);
 
             const unsigned_block = {
                 link,
@@ -101,26 +101,26 @@ export const pendingSyncNano = async ({ rel, base, config, balance, pending, add
                 balance: bal.toString(10),
                 representative,
             };
-            //@ts-ignore
+            // @ts-ignore
             const { hash, block } = nanocurrency.createBlock(options.wif, unsigned_block);
-            //@ts-ignore
+            // @ts-ignore
             const r1 = await axios.post(`${api}`, {
-                "action": "process",
+                action: "process",
                 block: JSON.stringify(block),
             });
         }
     }
-}
+};
 export const getTxs = async ({ config, address, rel, base }) => {
     const api = getConfig(config, rel, base).api;
     const txs = [];
-    
+
     const data = await axios.post(`${api}`, {
-        "action": "account_history",
-        "count": 10,
-        "account": address,
+        action: "account_history",
+        count: 10,
+        account: address,
     });
-    data.data.history.map(o => {
+    data.data.history.map((o) => {
         const tx = {
             from: o.type == "send" ? address : o.account,
             hash: o.hash,
@@ -130,23 +130,23 @@ export const getTxs = async ({ config, address, rel, base }) => {
             timestamp: null,
         };
         txs.push(tx);
-    })
-    
-    return txs;
-}
+    });
 
+    return txs;
+};
 
 /*!
  * nanocurrency-js: A toolkit for the Nano cryptocurrency.
  * Copyright (c) 2018 Marvin ROGER <dev at marvinroger dot fr>
  * Licensed under GPL-3.0 (https://git.io/vAZsK)
  */
-//import BigNumber from 'bignumber.js';
+// import BigNumber from 'bignumber.js';
 
-//import { checkNumber, checkString } from './check';
+// import { checkNumber, checkString } from './check';
 
 // tslint:disable-next-line variable-name
-const TunedBigNumber = BigNumber.clone({ EXPONENTIAL_AT: 1e9 });
+// const TunedBigNumber = BigNumber.clone({ EXPONENTIAL_AT: 1e9 });
+const TunedBigNumber = BN;
 
 const ZEROES: { [index: string]: number | undefined } = {
   hex: 0,
@@ -162,21 +162,21 @@ const ZEROES: { [index: string]: number | undefined } = {
 /** Nano unit. */
 export enum Unit {
   /** 10^0 raw in hexadecimal format */
-  hex = 'hex',
+  hex = "hex",
   /** 10^0 raw */
-  raw = 'raw',
+  raw = "raw",
   /** 10^24 raw */
-  nano = 'nano',
+  nano = "nano",
   /** 10^27 raw */
-  knano = 'knano',
+  knano = "knano",
   /** 10^30 raw */
-  Nano = 'Nano',
+  Nano = "Nano",
   /** 10^30 raw */
-  NANO = 'NANO',
+  NANO = "NANO",
   /** 10^33 raw */
-  KNano = 'KNano',
+  KNano = "KNano",
   /** 10^36 raw */
-  MNano = 'MNano',
+  MNano = "MNano",
 }
 /** Convert parameters. */
 export interface ConvertParams {
@@ -194,14 +194,14 @@ export interface ConvertParams {
  * @returns Converted number
  */
 export function convert(value: string, params: ConvertParams) {
-  const paramsNotValid = new Error('From or to is not valid');
-  if (!params) throw paramsNotValid;
+  const paramsNotValid = new Error("From or to is not valid");
+  if (!params) { throw paramsNotValid; }
 
   const fromZeroes: number | undefined = ZEROES[params.from];
   const toZeroes: number | undefined = ZEROES[params.to];
 
-  if (typeof fromZeroes === 'undefined' || typeof toZeroes === 'undefined') {
-    throw new Error('From or to is not valid');
+  if (typeof fromZeroes === "undefined" || typeof toZeroes === "undefined") {
+    throw new Error("From or to is not valid");
   }
 
   /*
@@ -217,8 +217,8 @@ export function convert(value: string, params: ConvertParams) {
   const difference = fromZeroes - toZeroes;
 
   let bigNumber;
-  if (params.from === 'hex') {
-    bigNumber = new TunedBigNumber('0x' + value);
+  if (params.from === "hex") {
+    bigNumber = new TunedBigNumber("0x" + value);
   } else {
     bigNumber = new TunedBigNumber(value);
   }
@@ -233,8 +233,8 @@ export function convert(value: string, params: ConvertParams) {
     }
   }
 
-  if (params.to === 'hex') {
-    return bigNumber.toString(16).padStart(32, '0');
+  if (params.to === "hex") {
+    return bigNumber.toString(16).padStart(32, "0");
   }
 
   return bigNumber.toString();
