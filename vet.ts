@@ -46,7 +46,6 @@ export const send = async ({
     rel, base, address, amount, wif, options,
 }: sendType): Promise<string> => {
     const { rpc, api } = getConfig(options.config, rel, base);
-    const web3 = getWeb3(rpc);
 
     const clauses =  [{
         to: address,
@@ -102,15 +101,13 @@ const sendTransaction = async (api: string, clauses: ClauseType[], wif: string, 
     return res.data.id;
 };
 export const getBalance = async ({ config, address, rel, base }: txParamsType): Promise<BalancesType> => {
-    const { rpc } = getConfig(config, rel, base);
-    const web3 = getWeb3(rpc);
+    const { rpc, api, energy_ticker } = getConfig(config, rel, base);
 
-    const b: any = await web3.getBalance(address);
-    const e = 0;
-    // const e = await web3.getEnergy(address);
+    const data = await axios.get(`${api}/${address}`);
     const balances = {};
-
-    balances[base] = { balance: b / getAtomicValue(config, rel, base) };
-    balances["VTHO"] = { balance: e / getAtomicValue(config, "VTHO", base) };
+    const balance = ethers.utils.bigNumberify(data.data.balance).div(getAtomicValue(config, rel, base))
+    const energy = ethers.utils.bigNumberify(data.data.energy).div(getAtomicValue(config, rel, base))
+    balances[base] = { balance:  balance.toNumber() };
+    balances[energy_ticker] = { balance: energy.toNumber() };
     return balances;
 };
