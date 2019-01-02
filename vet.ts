@@ -111,6 +111,6 @@ export const getBalance = async ({ config, address, rel, base }: txParamsType): 
     const balances = {};
 
     balances[base] = { balance: b / getAtomicValue(config, rel, base) };
-    balances.VTHO = { balance: e / getAtomicValue(config, "VTHO", base) };
+    balances["VTHO"] = { balance: e / getAtomicValue(config, "VTHO", base) };
     return balances;
 };
