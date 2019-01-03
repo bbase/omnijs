@@ -5,10 +5,9 @@ import {
 } from "app/constants";
 import axios from "axios";
 import {ethers} from "ethers";
+
 import {
-    abi,
     cry,
-    RLP,
     Transaction,
 } from "thor-devkit";
 import { BalancesType, ClauseType, sendType, TransactionType, txParamsType } from "./interfaces";
@@ -45,19 +44,19 @@ export const getTxs = async ({ config, address, rel, base }: txParamsType): Prom
 export const send = async ({
     rel, base, address, amount, wif, options,
 }: sendType): Promise<string> => {
-    const { rpc, api } = getConfig(options.config, rel, base);
+    const { rpc, api, chainTag } = getConfig(options.config, rel, base);
 
     const clauses =  [{
         to: address,
         value: (new BN(amount).mul(getAtomicValue(options.config, rel, base))).toString(10),
         data: "0x",
     }];
-    return sendTransaction(api, clauses, wif);
+    return sendTransaction(api, chainTag, clauses, wif);
 };
 export const sendERC20 = async ({
     base, rel, address, amount, wif, options,
 }: sendType): Promise<string> => {
-    const { rpc, api } = getConfig(options.config, base, base);
+    const { rpc, api, chainTag } = getConfig(options.config, base, base);
     const web3 = getWeb3(rpc);
 
     const asset = options.config[base].assets[rel];
@@ -70,19 +69,19 @@ export const sendERC20 = async ({
         value: (0).toString(),
         data,
     }];
-    return sendTransaction(api, clauses, wif, 65000);
+    return sendTransaction(api, chainTag, clauses, wif, 65000);
 };
 
-const sendTransaction = async (api: string, clauses: ClauseType[], wif: string, gasLimit?: number): Promise<string> => {
-    // const chainTag = await web3.eth.getChainTag();
-    // const blockRef = await web3.eth.getBlockRef();
+const sendTransaction = async (api: string, chainTag: number, clauses: ClauseType[], wif: string, gasLimit?: number): Promise<string> => {
+    const data = await axios.get(`${api}/blocks/best`);
+    const blockRef = data.data.id.slice(0, 18); // first 16 bytes of best block id in hex
 
     const gas = gasLimit || Transaction.intrinsicGas(clauses);
     const gasPriceCoef = 128;
     const expiration = 720;
     const body = {
-        // chainTag,
-        // blockRef,
+        chainTag,
+        blockRef,
         expiration,
         clauses,
         gasPriceCoef,
@@ -90,7 +89,6 @@ const sendTransaction = async (api: string, clauses: ClauseType[], wif: string, 
         dependsOn: null,
         nonce: Number(new Date()),
     };
-    // @ts-ignore
     const tx = new Transaction(body);
     const signingHash = cry.blake2b256(tx.encode());
     const privateKey = new Buffer(wif.substr(2), "hex");

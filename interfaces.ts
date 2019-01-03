@@ -44,3 +44,8 @@ export interface ClauseType {
     value: string;
     data: string;
 }
+export interface WalletType {
+    wif: string;
+    address: string;
+    publicKey: string;
+}

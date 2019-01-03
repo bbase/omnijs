@@ -6,6 +6,7 @@ import bitcoinSecp256r1 from "bitcoinjs-lib-secp256r1";
 import { ethers } from "ethers";
 import * as nanocurrency from "nanocurrency";
 import rplk from "ripple-keypairs";
+import { WalletType }from './interfaces';
 
 export const getRootNode = (seed: any, rel: string, base: string, config) => {
   let rootNode;
@@ -19,7 +20,7 @@ export const getRootNode = (seed: any, rel: string, base: string, config) => {
         seed,
         bitcoinSecp256r1.bitcoin,
       );
-      break;
+    break;
       // case 'XRP':
       // case 'XMR':
     case "NANO":
@@ -44,8 +45,8 @@ export const getChildNode = (
   return typeof rootNode == "object" ? rootNode.derivePath(bip44path) : rootNode;
 };
 
-export const getWallet = (childNode: any, rel: string, base: string, config) => {
-  let wif, address, publicKey;
+export const getWallet = (childNode: any, rel: string, base: string, config): WalletType => {
+  let wif: string, address: string, publicKey: string;
 
   switch (base) {
     case "BTC":
