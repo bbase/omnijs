@@ -1,18 +1,17 @@
 import { wallet as NeoWallet } from "@cityofzion/neon-core";
-import { toBitcoinJS } from "app/constants";
 import bip32 from "bip32";
 import bitcoin from "bitcoinjs-lib";
 import bitcoinSecp256r1 from "bitcoinjs-lib-secp256r1";
 import { ethers } from "ethers";
 import * as nanocurrency from "nanocurrency";
 import rplk from "ripple-keypairs";
-import { WalletType }from './interfaces';
+import { toBitcoinJS, WalletType, C, RB } from "app/constants";
 
-export const getRootNode = (seed: any, rel: string, base: string, config) => {
+export const getRootNode = (seed: any, rb: RB, config: C) => {
   let rootNode;
-  switch (base) {
+  switch (rb.base) {
     case "BTC":
-      const network = toBitcoinJS(config[rel].network);
+      const network = toBitcoinJS(config[rb.rel].network);
       rootNode = bip32.fromSeed(seed, network);
       break;
     case "NEO":
@@ -37,20 +36,20 @@ export const getChildNode = (
   account: number,
   change: number,
   index: number,
-  rel: string,
-  config: any,
+  rb: RB,
+  config: C,
 ) => {
-  const networkCode = config[rel].code;
+  const networkCode = config[rb.rel].code;
   const bip44path = `m/44'/${networkCode}'/${account}'/${change}/${index}`;
   return typeof rootNode == "object" ? rootNode.derivePath(bip44path) : rootNode;
 };
 
-export const getWallet = (childNode: any, rel: string, base: string, config): WalletType => {
+export const getWallet = (childNode: any, rb: RB, config: C): WalletType => {
   let wif: string, address: string, publicKey: string;
 
-  switch (base) {
+  switch (rb.base) {
     case "BTC":
-      const network = toBitcoinJS(config[rel].network);
+      const network = toBitcoinJS(config[rb.rel].network);
       const derivedWallet = bitcoin.payments.p2pkh({
         pubkey: childNode.publicKey,
         network,

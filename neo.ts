@@ -1,8 +1,59 @@
-import Neon, { api, rpc, sc, u, wallet } from "@cityofzion/neon-js";
+import { rpc, sc, u, wallet } from "@cityofzion/neon-core";
+import * as api from "@cityofzion/neon-api";
 import {
-    getConfig,
+    getConfig, txParamsType, BalancesType, TransactionType, sendType,
 } from "app/constants";
 import axios from "axios";
+
+
+export const getBalance = async ({ rb, config, address }: txParamsType): Promise<BalancesType> => {
+    const api = getConfig(config, rb).api;
+    const balances = {};
+
+    const data = await axios.get(`${api}/get_balance/${address}`);
+    data.data.balance.map((o) => {
+        balances[o.asset] = { balance: o.amount, isNeo: true };
+    });
+    return balances;
+};
+
+export const getTxs = async ({ config, address, rb }: txParamsType): Promise<TransactionType[]> => {
+    const { api } = getConfig(config, rb);
+    const txs: TransactionType[] = [];
+    const data = await axios.get(`${api}/get_address_abstracts/${address}/0`);
+
+    data.data.entries.map((o) => {
+        const tx: TransactionType = {
+            from: o.address_from,
+            hash: o.txid,
+            confirmations: null,
+            value: o.amount,
+            kind: o.address_from.toLowerCase() == address.toLowerCase() ? "sent" : "got",
+            fee: 0,
+            timestamp: o.time,
+            asset: config[rb.base].assets[o.asset] ? config[rb.base].assets[o.asset] : null,
+        };
+        txs.push(tx);
+    });
+    return txs;
+};
+
+export const send = async ({
+    rb, from, address, amount, options,
+}: sendType): Promise<string> => {
+    const { api } = getConfig(options.config, rb);
+    const balance = (await axios.get(`${api}/get_balance/${address}`)).data;
+    const result = await sendTransaction([{ amount: amount.toString(), address, symbol: rb.rel }],
+        {
+            balances: balance,
+            wif: options.wif,
+            address: from,
+            publicKey: options.publicKey,
+            fees: options.fees,
+            base: rb.base,
+        });
+    return result.txid;
+};
 
 // @ts-ignore
 Array.prototype.flatMap = function(lambda) {
@@ -101,14 +152,16 @@ export const sendTransaction = async (sendEntries: SendEntryType[], opts) => {
     const fromAddress = opts.address;
     const publicKey = opts.publicKey;
 
+    const url = `${opts.config[opts.base].explorer}/api/main_net`
     const net = new rpc.Network({
         name: "Net",
         extra: {
-            neoscan: `${opts.config[opts.base].explorer}/api/main_net`,
+            neoscan: url,
         },
     });
-    Neon.add.network(net);
-    const netNeoscan = new api.neoscan.instance("Net");
+    
+    //Neon.add.network(net);
+    const netNeoscan = new api.neoscan.instance(url);
     const { response } = await makeRequest(sendEntries, {
         net,
         tokensBalanceMap: opts.balances,
@@ -124,52 +177,4 @@ export const sendTransaction = async (sendEntries: SendEntryType[], opts) => {
         throw new Error("Failed");
     }
     return response;
-};
-
-export const send = async ({
-    base, from, rel, address, amount, wif, options,
-}) => {
-    const api = getConfig(options.config, rel, base).api;
-    const balance = (await axios.get(`${api}/get_balance/${address}`)).data;
-    const result = await sendTransaction([{ amount, address, symbol: rel }],
-        {
-            balances: balance,
-            wif,
-            address: from,
-            publicKey: options.publicKey,
-            fees: options.fees,
-            base,
-        });
-    // @ts-ignore
-    return result.txid;
-};
-
-export const getTxs = async ({ config, address, rel, base }) => {
-    const { api } = getConfig(config, rel, base);
-    const txs = [];
-    const data = await axios.get(`${api}/get_address_abstracts/${address}/0`);
-
-    data.data.entries.map((o) => {
-        const tx = {
-            from: o.address_from,
-            hash: o.txid,
-            confirmations: null,
-            value: o.amount,
-            kind: o.address_from.toLowerCase() == address.toLowerCase() ? "sent" : "got",
-            fee: 0,
-            timestamp: o.time,
-            asset: config[base].assets[o.asset] ? config[base].assets[o.asset] : null,
-        };
-        txs.push(tx);
-    });
-    return txs;
-};
-export const getBalance = async ({ config, address, rel, base }) => {
-    const api = getConfig(config, rel, base).api;
-    const balances = {};
-
-    const data = await axios.get(`${api}/get_balance/${address}`);
-    data.data.balance.map((o) => {
-        balances[o.asset] = { balance: o.amount, isNeo: true };
-    });
 };

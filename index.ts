@@ -8,18 +8,22 @@ import * as neo from "./neo";
 import * as vet from "./vet";
 import * as xrp from "./xrp";
 
-const G_IMPORT = {btc, eth, neo, nano, vet, xrp};
-
 import {
   getAtomicValue,
   getConfig,
+  
+  sendOptionsType,
+  RB,
+  C,
 } from "app/constants";
+
+const G_IMPORT = {btc, eth, neo, nano, vet, xrp};
 
 export const generateSeed = (_mnemonic?: string, passphrase: string = "", options?: any) => {
   const mnemonic = _mnemonic ? _mnemonic : bip39.generateMnemonic(256);
   const seed = bip39.mnemonicToSeed(mnemonic, passphrase);
 
-  const { wif, address, publicKey } = generatePKey(options.rel, options.base, options.config, seed);
+  const { wif, address, publicKey } = generatePKey({ rel: options.rel, base: options.base}, options.config, seed);
 
   return { wif, address, publicKey, mnemonic };
 };
@@ -27,72 +31,61 @@ export const generateSeed = (_mnemonic?: string, passphrase: string = "", option
   https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki#Change
   */
 export const generatePKey = (
-    rel,
-    base,
-    config,
+    rb: RB,
+    config: C,
     seed: Buffer,
     account: number = 0,
     change: number = 0,
     index: number = 0,
   ) => {
-    const rootNode = getRootNode(seed, rel, base, config);
-    const childNode = getChildNode(rootNode, account, change, index, rel, config);
-    const { wif, address, publicKey } = getWallet(childNode, rel, base, config);
+    const rootNode = getRootNode(seed, rb, config);
+    const childNode = getChildNode(rootNode, account, change, index, rb, config);
+    const { wif, address, publicKey } = getWallet(childNode, rb, config);
 
     return { wif, address, publicKey };
   };
 
 export const send = async (
-    rel,
-    base,
+    rb: RB,
     from: string,
     address: string,
     amount: number,
-    wif: string,
-    options?: any,
-  ) => {
+    options?: sendOptionsType,
+  ): Promise<string> => {
       let txid;
-      switch (base) {
+      switch (rb.base) {
         case "ETH":
         case "VET":
           // options.gasLimit *= 1000000000;
           options.gasPrice *= 1000000000;
-          if (rel == base) {
-            txid = await G_IMPORT[base.toLowerCase()].send({ from, rel, address, amount, wif, options });
+          if (rb.rel == rb.base) {
+            txid = await G_IMPORT[rb.base.toLowerCase()].send({ rb, from, address, amount, options });
           } else {
-            txid = await G_IMPORT[base.toLowerCase()].sendERC20({ from, rel, base, address, amount, wif, options });
+            txid = await G_IMPORT[rb.base.toLowerCase()].sendERC20({ rb, from, address, amount, options });
           }
           break;
         default:
-          txid = await G_IMPORT[base.toLowerCase()].send({ from, rel, base, address, amount, wif, options });
+          txid = await G_IMPORT[rb.base.toLowerCase()].send({ rb, from, address, amount, options });
           break;
       }
-      return {txid};
+      return txid;
   };
 export const getTxs = async (
-    rel,
-    base,
+    rb: RB,
     address: string,
     config,
   ) => {
-
-    let data, n_tx, txs = [];
-    const api = getConfig(config, rel, base).api;
-    const decimals = getAtomicValue(config, rel, base);
-    txs = await G_IMPORT[base.toLowerCase()].getTxs({ config, rel, base, address });
+    let  n_tx, txs = [];
+    const api = getConfig(config, rb).api;
+    const decimals = getAtomicValue(config, rb);
+    txs = await G_IMPORT[rb.base.toLowerCase()].getTxs({ rb, config, address });
     return {txs, n_tx};
   };
 export const getBalance = async (
-    rel,
-    base,
+    rb: RB,
     address: string,
     config,
   ) => {
-
-    const api = getConfig(config, rel, base).api;
-    let data;
-    let balances = {};
-    const balance: number = 0;
-    balances =  await G_IMPORT[base.toLowerCase()].getBalance({ config, rel, base, address });
+    const balances = await G_IMPORT[rb.base.toLowerCase()].getBalance({ rb, config,address });
     return balances;
   };

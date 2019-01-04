@@ -2,6 +2,7 @@ import {
     getAtomicValue,
     getConfig,
     transferABI,
+    BalancesType, ClauseType, sendType, TransactionType, txParamsType,
 } from "app/constants";
 import axios from "axios";
 import {ethers} from "ethers";
@@ -10,26 +11,37 @@ import {
     cry,
     Transaction,
 } from "thor-devkit";
-import { BalancesType, ClauseType, sendType, TransactionType, txParamsType } from "./interfaces";
 
 const BN = require("bn.js");
 
 export const getWeb3 = (rpc: string): ethers.providers.JsonRpcProvider => {
     return new ethers.providers.JsonRpcProvider(rpc);
 };
-export const getTxs = async ({ config, address, rel, base }: txParamsType): Promise<TransactionType[]> => {
-    const {api} = getConfig(config, rel, base);
-    const txs = [];
-    const asset = rel == base ? undefined : config[base].assets[rel];
-    const path = rel == base ? "transactions" : "tokenTransfers";
+export const getBalance = async ({ config, address, rb }: txParamsType): Promise<BalancesType> => {
+    const { api, energy_ticker } = getConfig(config, rb);
+
+    const data = await axios.get(`${api}/${address}`);
+    const balances = {};
+    const balance = ethers.utils.bigNumberify(data.data.balance).div(getAtomicValue(config, rb))
+    const energy = ethers.utils.bigNumberify(data.data.energy).div(getAtomicValue(config, rb))
+    balances[rb.base] = { balance: balance.toNumber() };
+    balances[energy_ticker] = { balance: energy.toNumber() };
+    return balances;
+};
+
+export const getTxs = async ({ config, address, rb }: txParamsType): Promise<TransactionType[]> => {
+    const { api } = getConfig(config, rb);
+    const txs: TransactionType[] = [];
+    const asset = rb.rel == rb.base ? undefined : config[rb.base].assets[rb.rel];
+    const path = rb.rel == rb.base ? "transactions" : "tokenTransfers";
 
     const data = await axios.get(`${api}/${path}?address=${address}&count=10&offset=0`);
     data.data[path].map((o) => {
-        if (base == rel || (asset.hash == o.contractAddress && !o.transaction.reverted)) {
-            const tx = {
+        if (rb.base == rb.rel || (asset.hash == o.contractAddress && !o.transaction.reverted)) {
+            const tx: TransactionType = {
                 from: o.origin,
-                hash: rel == base ? o.id : o.txId,
-                value: (rel == base ? o.totalValue : Number(ethers.utils.hexlify(o.amount))) / getAtomicValue(config, rel, base),
+                hash: rb.rel == rb.base ? o.id : o.txId,
+                value: (rb.rel == rb.base ? o.totalValue : Number(ethers.utils.hexlify(o.amount))) / getAtomicValue(config, rb),
                 kind: o.origin == address ? "sent" : "got",
                 fee: 0,
                 timestamp: o.timestamp,
@@ -42,25 +54,25 @@ export const getTxs = async ({ config, address, rel, base }: txParamsType): Prom
 };
 
 export const send = async ({
-    rel, base, address, amount, wif, options,
+    rb, address, amount, options,
 }: sendType): Promise<string> => {
-    const { rpc, api, chainTag } = getConfig(options.config, rel, base);
+    const { api, chainTag } = getConfig(options.config, rb);
 
     const clauses =  [{
         to: address,
-        value: (new BN(amount).mul(getAtomicValue(options.config, rel, base))).toString(10),
+        value: (new BN(amount).mul(getAtomicValue(options.config, rb))).toString(10),
         data: "0x",
     }];
-    return sendTransaction(api, chainTag, clauses, wif);
+    return sendTransaction(api, chainTag, clauses, options.wif);
 };
 export const sendERC20 = async ({
-    base, rel, address, amount, wif, options,
+    rb, address, amount, options,
 }: sendType): Promise<string> => {
-    const { rpc, api, chainTag } = getConfig(options.config, base, base);
+    const { rpc, api, chainTag } = getConfig(options.config, rb);
     const web3 = getWeb3(rpc);
 
-    const asset = options.config[base].assets[rel];
-    const decimals = getAtomicValue(options.config, rel, base);
+    const asset = options.config[rb.base].assets[rb.rel];
+    const decimals = getAtomicValue(options.config, rb);
     const contract = new ethers.Contract(asset.hash, transferABI, web3);
     const data = contract.methods.transfer(address, new BN(amount).mul(decimals)).encodeABI();
 
@@ -69,7 +81,7 @@ export const sendERC20 = async ({
         value: (0).toString(),
         data,
     }];
-    return sendTransaction(api, chainTag, clauses, wif, 65000);
+    return sendTransaction(api, chainTag, clauses, options.wif, 65000);
 };
 
 const sendTransaction = async (api: string, chainTag: number, clauses: ClauseType[], wif: string, gasLimit?: number): Promise<string> => {
@@ -97,15 +109,4 @@ const sendTransaction = async (api: string, chainTag: number, clauses: ClauseTyp
     const raw = tx.encode();
     const res = await axios.post(`${api}/transactions`, { raw: "0x" + raw.toString("hex")});
     return res.data.id;
-};
-export const getBalance = async ({ config, address, rel, base }: txParamsType): Promise<BalancesType> => {
-    const { rpc, api, energy_ticker } = getConfig(config, rel, base);
-
-    const data = await axios.get(`${api}/${address}`);
-    const balances = {};
-    const balance = ethers.utils.bigNumberify(data.data.balance).div(getAtomicValue(config, rel, base))
-    const energy = ethers.utils.bigNumberify(data.data.energy).div(getAtomicValue(config, rel, base))
-    balances[base] = { balance:  balance.toNumber() };
-    balances[energy_ticker] = { balance: energy.toNumber() };
-    return balances;
 };
