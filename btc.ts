@@ -47,7 +47,6 @@ export const getTxs = async ({ rb, config, address }: txParamsType): Promise<Tra
 export const send = async ({
   rb, from, address, amount, options,
 }: sendType) => {
-  const base = "BTC";
   const multiply_by = rb.rel == "BTC" ? 1 : getAtomicValue(options.config, rb);
   const utxos = await getUtxos({ config: options.config, rb, address: from });
   const txid = await broadcastTx({

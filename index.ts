@@ -75,11 +75,9 @@ export const getTxs = async (
     address: string,
     config,
   ) => {
-    let  n_tx, txs = [];
-    const api = getConfig(config, rb).api;
-    const decimals = getAtomicValue(config, rb);
+    let txs = [];
     txs = await G_IMPORT[rb.base.toLowerCase()].getTxs({ rb, config, address });
-    return {txs, n_tx};
+    return {txs};
   };
 export const getBalance = async (
     rb: RB,
