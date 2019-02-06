@@ -2,57 +2,12 @@ import {
     getAtomicValue,
     getConfig,
     sendType,
-    txParamsType,
-    TransactionType,
-    BalancesType,
     pendingSendType,
 } from "app/constants";
 import axios from "axios";
 import * as nanocurrency from "nanocurrency";
-import { number } from "prop-types";
-import { Address } from "cluster";
 
 const BN = require("bn.js");
-
-export const getBalance = async ({ config, address, rb }: txParamsType): Promise<BalancesType>  => {
-    const api = getConfig(config, rb).api;
-
-    const data = await axios.post(`${api}`, {
-        action: "account_balance",
-        account: address,
-    });
-    // @ts-ignore
-    const balance = convert(data.data.balance, { from: "raw", to: "NANO" });
-    // @ts-ignore
-    const pending = convert(data.data.pending, { from: "raw", to: "NANO" });
-    const balances = { [rb.rel]: { balance: +balance, pending: +pending, balance_raw: data.data.balance, pending_raw: data.data.pending } };
-
-    return balances;
-};
-
-export const getTxs = async ({ config, address, rb }: txParamsType): Promise<TransactionType[]> => {
-    const api = getConfig(config, rb).api;
-    const txs: TransactionType[] = [];
-
-    const data = await axios.post(`${api}`, {
-        action: "account_history",
-        count: 10,
-        account: address,
-    });
-    data.data.history.map((o) => {
-        const tx: TransactionType = {
-            from: o.type == "send" ? address : o.account,
-            hash: o.hash,
-            value: Number(o.amount) / getAtomicValue(config, rb),
-            kind: o.type == "send" ? "sent" : "got",
-            fee: 0,
-            timestamp: null,
-        };
-        txs.push(tx);
-    });
-
-    return txs;
-};
 
 export const send = async ({ rb, from, address, amount, options }: sendType): Promise<string> => {
     const { api, rep } = getConfig(options.config, rb);

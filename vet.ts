@@ -2,7 +2,7 @@ import {
     getAtomicValue,
     getConfig,
     transferABI,
-    BalancesType, ClauseType, sendType, TransactionType, txParamsType,
+    ClauseType, sendType
 } from "app/constants";
 import axios from "axios";
 import {ethers} from "ethers";
@@ -16,41 +16,6 @@ const BN = require("bn.js");
 
 export const getWeb3 = (rpc: string): ethers.providers.JsonRpcProvider => {
     return new ethers.providers.JsonRpcProvider(rpc);
-};
-export const getBalance = async ({ config, address, rb }: txParamsType): Promise<BalancesType> => {
-    const { api, energy_ticker } = getConfig(config, rb);
-
-    const data = await axios.get(`${api}/${address}`);
-    const balances = {};
-    const balance = ethers.utils.bigNumberify(data.data.balance).div(getAtomicValue(config, rb))
-    const energy = ethers.utils.bigNumberify(data.data.energy).div(getAtomicValue(config, rb))
-    balances[rb.base] = { balance: balance.toNumber() };
-    balances[energy_ticker] = { balance: energy.toNumber() };
-    return balances;
-};
-
-export const getTxs = async ({ config, address, rb }: txParamsType): Promise<TransactionType[]> => {
-    const { api } = getConfig(config, rb);
-    const txs: TransactionType[] = [];
-    const asset = rb.rel == rb.base ? undefined : config[rb.base].assets[rb.rel];
-    const path = rb.rel == rb.base ? "transactions" : "tokenTransfers";
-
-    const data = await axios.get(`${api}/${path}?address=${address}&count=10&offset=0`);
-    data.data[path].map((o) => {
-        if (rb.base == rb.rel || (asset.hash == o.contractAddress && !o.transaction.reverted)) {
-            const tx: TransactionType = {
-                from: o.origin,
-                hash: rb.rel == rb.base ? o.id : o.txId,
-                value: (rb.rel == rb.base ? o.totalValue : Number(ethers.utils.hexlify(o.amount))) / getAtomicValue(config, rb),
-                kind: o.origin == address ? "sent" : "got",
-                fee: 0,
-                timestamp: o.timestamp,
-            };
-            txs.push(tx);
-        }
-    });
-
-    return txs;
 };
 
 export const send = async ({

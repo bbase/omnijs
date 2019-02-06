@@ -1,42 +1,9 @@
 import { rpc, sc, u, wallet } from "@cityofzion/neon-core";
 import * as api from "@cityofzion/neon-api";
 import {
-    getConfig, txParamsType, BalancesType, TransactionType, sendType,
+    getConfig, sendType,
 } from "app/constants";
 import axios from "axios";
-
-
-export const getBalance = async ({ rb, config, address }: txParamsType): Promise<BalancesType> => {
-    const api = getConfig(config, rb).api;
-    const balances = {};
-
-    const data = await axios.get(`${api}/get_balance/${address}`);
-    data.data.balance.map((o) => {
-        balances[o.asset] = { balance: o.amount, isNeo: true };
-    });
-    return balances;
-};
-
-export const getTxs = async ({ config, address, rb }: txParamsType): Promise<TransactionType[]> => {
-    const { api } = getConfig(config, rb);
-    const txs: TransactionType[] = [];
-    const data = await axios.get(`${api}/get_address_abstracts/${address}/0`);
-
-    data.data.entries.map((o) => {
-        const tx: TransactionType = {
-            from: o.address_from,
-            hash: o.txid,
-            confirmations: null,
-            value: o.amount,
-            kind: o.address_from.toLowerCase() == address.toLowerCase() ? "sent" : "got",
-            fee: 0,
-            timestamp: o.time,
-            asset: config[rb.base].assets[o.asset] ? config[rb.base].assets[o.asset] : null,
-        };
-        txs.push(tx);
-    });
-    return txs;
-};
 
 export const send = async ({
     rb, from, address, amount, options,

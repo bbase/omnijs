@@ -1,49 +1,7 @@
-import { getAtomicValue, getConfig, toBitcoinJS, txParamsType, sendType, BalancesType, TransactionType } from "app/constants";
+import { getAtomicValue, getConfig, toBitcoinJS, txParamsType, sendType, BalancesType, ITransactionType } from "app/constants";
 import axios from "axios";
 import bitcoin from "bitcoinjs-lib";
 
-
-export const getBalance = async ({ config, rb, address }: txParamsType): Promise<BalancesType> => {
-  const { api } = getConfig(config, rb);
-  const data = await axios.get(`${api}/addr/${address}`);
-  const balance = data.data.balance;
-  return { [rb.rel]: { balance } };
-};
-export const getTxs = async ({ rb, config, address }: txParamsType): Promise<TransactionType[]> => {
-  const api = getConfig(config, rb).api;
-  const txs = [];
-  const data = await axios.get(`${api}/txs/?address=${address}`);
-  data.data.txs.map((o) => {
-    const from = o.vin[0].addr;
-    let value = 0;
-    let kind = "got";
-    const fee = o.fees;
-
-    if (from != address) {
-      kind = "got";
-      o.vout.map((ox) => {
-        if (ox.scriptPubKey.addresses && ox.scriptPubKey.addresses[0] == address) {
-          value += ox.value;
-        }
-      });
-    } else {
-      kind = "sent";
-      value = o.vout[0].value;
-
-    }
-    const tx = {
-      from,
-      hash: o.txid,
-      confirmations: o.confirmations,
-      value,
-      kind,
-      fee,
-      timestamp: o.blocktime,
-    };
-    txs.push(tx);
-  });
-  return txs;
-};
 export const send = async ({
   rb, from, address, amount, options,
 }: sendType) => {

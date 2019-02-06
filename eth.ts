@@ -3,7 +3,7 @@ import {
     getAtomicValue,
     getConfig,
     transferABI,
-    BalancesType, ethTransactionType, sendType, TransactionType, txParamsType,
+    BalancesType, ethTransactionType, sendType, ITransactionType, txParamsType,
 } from "app/constants";
 import axios from "axios";
 import {ethers} from "ethers";
@@ -13,55 +13,6 @@ const BN = require("bn.js");
 export const getWeb3 = (rpc: string): ethers.providers.JsonRpcProvider => {
     return new ethers.providers.JsonRpcProvider(rpc);
 };
-export const getBalance = async ({ rb, config, address, }: txParamsType): Promise<BalancesType> => {
-    const { rpc, api_tokens } = getConfig(config, rb);
-    const web3 = getWeb3(rpc);
-
-    const balances = {};
-    const tokens = [];
-    for (const x in config[rb.base].assets) {
-        tokens.push(config[rb.base].assets[x].hash);
-    }
-    const data0 = await axios.post(`${api_tokens}`, { address, tokens });
-    let i = 0;
-    for (const x in config[rb.base].assets) {
-        const c = config[rb.base].assets[x];
-        const v = data0.data[i][c.hash];
-        balances[x] = { balance: v / getAtomicValue(config, { rel: x, base: rb.base }) };
-        i++;
-    }
-    const b: any = await web3.getBalance(address);
-    balances[rb.base] = { balance: b / getAtomicValue(config, rb) };
-    return balances;
-};
-
-export const getTxs = async ({ rb, address, config }: txParamsType): Promise<TransactionType[]> => {
-    const { api } = getConfig(config, rb);
-    const txs: TransactionType[] = [];
-
-    let isErc20 = false;
-    if (rb.rel != rb.base) { isErc20 = true; }
-
-    const data = await axios.get(`${api}/?module=account&action=${isErc20 ? "tokentx" : "txlist"}&address=${address}&startblock=0&endblock=99999999&page=1&offset=10&sort=desc&apikey=${etherscan_api_key}`);
-    const decimals = getAtomicValue(config, rb);
-
-    data.data.result.map((o) => {
-        const tx: TransactionType = {
-            from: o.from,
-            hash: o.hash,
-            confirmations: o.confirmations,
-            value: isErc20 ? o.value / 10 ** o.tokenDecimal : o.value / decimals,
-            kind: o.from.toLowerCase() == address.toLowerCase() ? "sent" : "got",
-            fee: (o.gas * o.gasPrice) / decimals,
-            timestamp: o.timeStamp,
-            asset: config[rb.base].assets[o.tokenSymbol] ? config[rb.base].assets[o.tokenSymbol] : null,
-        };
-
-        txs.push(tx);
-    });
-    return txs;
-};
-
 export const send = async ({
     rb , from, address, amount, options,
 }: sendType): Promise<string> => {

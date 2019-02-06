@@ -9,9 +9,6 @@ import * as vet from "./vet";
 import * as xrp from "./xrp";
 
 import {
-  getAtomicValue,
-  getConfig,
-  
   sendOptionsType,
   RB,
   C,
@@ -22,11 +19,10 @@ const G_IMPORT = {btc, eth, neo, nano, vet, xrp};
 export const generateSeed = (_mnemonic?: string, passphrase: string = "", options?: any) => {
   const mnemonic = _mnemonic ? _mnemonic : bip39.generateMnemonic(256);
   const seed = bip39.mnemonicToSeed(mnemonic, passphrase);
-
-  const { wif, address, publicKey } = generatePKey({ rel: options.rel, base: options.base}, options.config, seed);
-
-  return { wif, address, publicKey, mnemonic };
+  return { seed, mnemonic };
 };
+
+
   /*
   https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki#Change
   */
@@ -69,21 +65,4 @@ export const send = async (
           break;
       }
       return txid;
-  };
-export const getTxs = async (
-    rb: RB,
-    address: string,
-    config,
-  ) => {
-    let txs = [];
-    txs = await G_IMPORT[rb.base.toLowerCase()].getTxs({ rb, config, address });
-    return {txs};
-  };
-export const getBalance = async (
-    rb: RB,
-    address: string,
-    config,
-  ) => {
-    const balances = await G_IMPORT[rb.base.toLowerCase()].getBalance({ rb, config,address });
-    return balances;
   };
