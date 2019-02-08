@@ -7,6 +7,9 @@ import * as nanocurrency from "nanocurrency";
 import rplk from "ripple-keypairs";
 import { toBitcoinJS, WalletType, C, RB } from "app/constants";
 
+const bufferToHex = (buffer) => {
+  return Array.prototype.map.call(new Uint8Array(buffer), x => ('00' + x.toString(16)).slice(-2)).join('');
+}
 export const getRootNode = (seed: any, rb: RB, config: C) => {
   let rootNode;
   switch (rb.base) {
@@ -60,7 +63,7 @@ export const getWallet = (childNode: any, rb: RB, config: C): WalletType => {
 
       wif = firstKeyECPair.toWIF();
       address = derivedWallet.address;
-      publicKey = childNode.publicKey;
+      publicKey = bufferToHex(childNode.publicKey);
       break;
     case "NEO":
       wif = childNode.keyPair.toWIF();
@@ -102,8 +105,8 @@ export const getWallet = (childNode: any, rb: RB, config: C): WalletType => {
       const wallet = new ethers.Wallet("0x" + privkey);
       address = wallet.address;
       wif = wallet.privateKey;
-      // pubkey = ethUtil.addHexPrefix(pubkey);
-      break;
+      publicKey = ethers.utils.computePublicKey(wallet.privateKey);
+    break;
   }
   return { wif, address, publicKey };
 };
