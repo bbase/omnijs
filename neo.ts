@@ -4,11 +4,19 @@ import {
     getConfig, sendType,
 } from "app/constants";
 import axios from "axios";
+import Wif from "wif";
 
+export const getWallet = ({childNode}) =>{
+    const wif = Wif.encode(128, childNode.privateKey, true)
+    const publicKey = childNode.publicKey.toString("hex");
+    const address = wallet.getAddressFromScriptHash(wallet.getScriptHashFromPublicKey(publicKey));
+    
+    return {wif, publicKey, address};
+}
 export const send = async ({
     rb, from, address, amount, options,
 }: sendType): Promise<string> => {
-    const { api } = getConfig(options.config, rb);
+    const { api } = getConfig(config, rb);
     const balance = (await axios.get(`${api}/get_balance/${address}`)).data;
     const result = await sendTransaction([{ amount: amount.toString(), address, symbol: rb.rel }],
         {

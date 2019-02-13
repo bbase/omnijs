@@ -1,5 +1,4 @@
 import bip39 from "bip39";
-import { getChildNode, getRootNode, getWallet } from "./keys";
 
 import * as btc from "./btc";
 import * as eth from "./eth";
@@ -7,14 +6,20 @@ import * as nano from "./nano";
 import * as neo from "./neo";
 import * as vet from "./vet";
 import * as xrp from "./xrp";
+import * as eos from "./eos";
 
 import {
   sendOptionsType,
   RB,
   C,
+  config,
 } from "app/constants";
 
-const G_IMPORT = {btc, eth, neo, nano, vet, xrp};
+
+const HDKey = require('hdkey')
+const HDKeyr = require('@ont-community/hdkey-secp256r1')
+
+const G_IMPORT = {btc, eth, neo, nano, vet, xrp, eos};
 
 export const generateSeed = (_mnemonic?: string, passphrase: string = "", options?: any) => {
   const mnemonic = _mnemonic ? _mnemonic : bip39.generateMnemonic(256);
@@ -28,18 +33,44 @@ export const generateSeed = (_mnemonic?: string, passphrase: string = "", option
   */
 export const generatePKey = (
     rb: RB,
-    config: C,
     seed: Buffer,
     account: number = 0,
     change: number = 0,
     index: number = 0,
   ) => {
-    const rootNode = getRootNode(seed, rb, config);
-    const childNode = getChildNode(rootNode, account, change, index, rb, config);
-    const { wif, address, publicKey } = getWallet(childNode, rb, config);
+    const rootNode = getRootNode(seed, rb);
+    const childNode = getChildNode(rootNode, account, change, index, rb);
+    const { wif, address, publicKey } = G_IMPORT[rb.base.toLowerCase()].getWallet({ childNode, rb });
 
     return { wif, address, publicKey };
   };
+
+export const getRootNode = (seed: any, rb: RB) => {
+  let rootNode;
+  switch (rb.base) {
+    case "NEO":
+      rootNode = HDKeyr.fromMasterSeed(seed)
+      break;
+    case "NANO":
+      rootNode = seed.slice(0, 32).toString("hex");
+      break;
+    default:
+      rootNode = HDKey.fromMasterSeed(seed)
+    break;
+  }
+  return rootNode;
+};
+export const getChildNode = (
+  rootNode: any,
+  account: number,
+  change: number,
+  index: number,
+  rb: RB,
+) => {
+  const networkCode = config[rb.rel].code;
+  const bip44path = `m/44'/${networkCode}'/${account}'/${change}/${index}`;
+  return typeof rootNode == "object" ? rootNode.derive(bip44path) : rootNode;
+};
 
 export const send = async (
     rb: RB,
@@ -66,3 +97,4 @@ export const send = async (
       }
       return txid;
   };
+

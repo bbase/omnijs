@@ -1,22 +1,27 @@
 import {
-    etherscan_api_key,
     getAtomicValue,
     getConfig,
     transferABI,
-    BalancesType, ethTransactionType, sendType, ITransactionType, txParamsType,
+    ethTransactionType, sendType,
 } from "app/constants";
-import axios from "axios";
 import {ethers} from "ethers";
-
+import { computeAddress } from "ethers/utils";
 const BN = require("bn.js");
 
+export const getWallet = ({childNode}) => {
+    const wif = "0x" + childNode.privateKey.toString("hex");
+    const publicKey = "0x" + childNode.publicKey.toString("hex");
+    const address = computeAddress(wif);          
+
+    return {wif, publicKey, address}
+}
 export const getWeb3 = (rpc: string): ethers.providers.JsonRpcProvider => {
     return new ethers.providers.JsonRpcProvider(rpc);
 };
 export const send = async ({
     rb , from, address, amount, options,
 }: sendType): Promise<string> => {
-    const { rpc } = getConfig(options.config, rb);
+    const { rpc } = getConfig(config, rb);
     const web3 = getWeb3(rpc);
     const txCount = await web3.getTransactionCount(from);
     const transaction: ethTransactionType = {
@@ -25,7 +30,7 @@ export const send = async ({
         gasPrice: ethers.utils.hexlify(options.gasPrice.toString()),
         to: address,
         from,
-        value: ethers.utils.hexlify((new BN(amount).mul(getAtomicValue(options.config, rb))).toString(10)),
+        value: ethers.utils.hexlify((new BN(amount).mul(getAtomicValue(config, rb))).toString(10)),
     };
     return sendSignedWeb3(options.wif, transaction, web3);
 };
@@ -33,10 +38,10 @@ export const send = async ({
 export const sendERC20 = async ({
     rb, from, address, amount, options,
 }: sendType): Promise<string>  => {
-    const { rpc } = getConfig(options.config, rb);
+    const { rpc } = getConfig(config, rb);
     const web3 = getWeb3(rpc);
-    const asset = options.config[rb.base].assets[rb.rel];
-    const decimals = getAtomicValue(options.config, rb);
+    const asset = config[rb.base].assets[rb.rel];
+    const decimals = getAtomicValue(config, rb);
     const contract = new ethers.Contract(asset.hash, transferABI, web3);
     const data = contract.transfer(address, new BN(amount).mul(decimals)).encodeABI();
 

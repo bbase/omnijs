@@ -11,7 +11,7 @@ import {
     cry,
     Transaction,
 } from "thor-devkit";
-
+export {getWallet} from "./eth"
 const BN = require("bn.js");
 
 export const getWeb3 = (rpc: string): ethers.providers.JsonRpcProvider => {
@@ -21,11 +21,11 @@ export const getWeb3 = (rpc: string): ethers.providers.JsonRpcProvider => {
 export const send = async ({
     rb, address, amount, options,
 }: sendType): Promise<string> => {
-    const { api, chainTag } = getConfig(options.config, rb);
+    const { api, chainTag } = getConfig(config, rb);
 
     const clauses =  [{
         to: address,
-        value: (new BN(amount).mul(getAtomicValue(options.config, rb))).toString(10),
+        value: (new BN(amount).mul(getAtomicValue(config, rb))).toString(10),
         data: "0x",
     }];
     return sendTransaction(api, chainTag, clauses, options.wif);
@@ -33,11 +33,11 @@ export const send = async ({
 export const sendERC20 = async ({
     rb, address, amount, options,
 }: sendType): Promise<string> => {
-    const { rpc, api, chainTag } = getConfig(options.config, rb);
+    const { rpc, api, chainTag } = getConfig(config, rb);
     const web3 = getWeb3(rpc);
 
-    const asset = options.config[rb.base].assets[rb.rel];
-    const decimals = getAtomicValue(options.config, rb);
+    const asset = config[rb.base].assets[rb.rel];
+    const decimals = getAtomicValue(config, rb);
     const contract = new ethers.Contract(asset.hash, transferABI, web3);
     const data = contract.methods.transfer(address, new BN(amount).mul(decimals)).encodeABI();
 

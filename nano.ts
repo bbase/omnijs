@@ -9,8 +9,16 @@ import * as nanocurrency from "nanocurrency";
 
 const BN = require("bn.js");
 
+export const getWallet = ({childNode}) => {
+
+  const wif = nanocurrency.deriveSecretKey(childNode, 0);
+  const publicKey = nanocurrency.derivePublicKey(wif);
+  const address = nanocurrency.deriveAddress(publicKey);  
+  
+  return {wif, publicKey, address};
+}
 export const send = async ({ rb, from, address, amount, options }: sendType): Promise<string> => {
-    const { api, rep } = getConfig(options.config, rb);
+    const { api, rep } = getConfig(config, rb);
   const d4 = await axios.post(`${api}`, {
       action: "account_representative",
       account: from,
@@ -29,7 +37,7 @@ export const send = async ({ rb, from, address, amount, options }: sendType): Pr
       action: "work_generate",
       hash: frontier || options.publicKey,
   });
-  const bal = new BN(options.balance.balance_raw).sub(new BN(amount * getAtomicValue(options.config, rb)));
+  const bal = new BN(options.balance.balance_raw).sub(new BN(amount * getAtomicValue(config, rb)));
 
   const unsigned_block = {
       link,
