@@ -7,7 +7,7 @@ import {
 import axios from "axios";
 import * as nanocurrency from "nanocurrency";
 
-const BN = require("bn.js");
+const BN = require("big.js");
 
 export const getWallet = ({childNode}) => {
 
@@ -18,7 +18,7 @@ export const getWallet = ({childNode}) => {
   return {wif, publicKey, address};
 }
 export const send = async ({ rb, from, address, amount, options }: sendType): Promise<string> => {
-    const { api, rep } = getConfig(config, rb);
+    const { api, rep } = getConfig(rb);
   const d4 = await axios.post(`${api}`, {
       action: "account_representative",
       account: from,
@@ -37,7 +37,7 @@ export const send = async ({ rb, from, address, amount, options }: sendType): Pr
       action: "work_generate",
       hash: frontier || options.publicKey,
   });
-  const bal = new BN(options.balance.balance_raw).sub(new BN(amount * getAtomicValue(config, rb)));
+  const bal = new BN(options.balance.balance_raw).minus(new BN(amount).mul(getAtomicValue(rb)));
 
   const unsigned_block = {
       link,
@@ -57,7 +57,7 @@ export const send = async ({ rb, from, address, amount, options }: sendType): Pr
 
 export const pendingSyncNano = async ({ rb, config, balance, pending, address, options }: pendingSendType): Promise<void> => {
 
-    const { api, rep } = getConfig(config, rb);
+    const { api, rep } = getConfig(rb);
     if (parseFloat(pending) > 0) {
         const d1 = await axios.post(`${api}`, {
             action: "accounts_pending",
@@ -86,7 +86,7 @@ export const pendingSyncNano = async ({ rb, config, balance, pending, address, o
                 hash: frontier || options.publicKey,
             });
 
-            const bal = new BN(balance).add(o.amount);
+            const bal = new BN(balance).plus(o.amount);
 
             const unsigned_block = {
                 link,

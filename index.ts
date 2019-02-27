@@ -7,19 +7,22 @@ import * as neo from "./neo";
 import * as vet from "./vet";
 import * as xrp from "./xrp";
 import * as eos from "./eos";
+import * as xlm from "./xlm";
 
 import {
   sendOptionsType,
   RB,
   C,
   config,
+  getNetwork,
 } from "app/constants";
 
 
 const HDKey = require('hdkey')
 const HDKeyr = require('@ont-community/hdkey-secp256r1')
+const HDKeyEd = require("./_hdkey_ed25519");
 
-const G_IMPORT = {btc, eth, neo, nano, vet, xrp, eos};
+const G_IMPORT = {btc, eth, neo, nano, vet, xrp, eos, xlm};
 
 export const generateSeed = (_mnemonic?: string, passphrase: string = "", options?: any) => {
   const mnemonic = _mnemonic ? _mnemonic : bip39.generateMnemonic(256);
@@ -54,6 +57,13 @@ export const getRootNode = (seed: any, rb: RB) => {
     case "NANO":
       rootNode = seed.slice(0, 32).toString("hex");
       break;
+    case "BTC":
+      const network = getNetwork(rb.rel);
+      rootNode = HDKey.fromMasterSeed(seed, network.bip32)
+    break;
+    case "XLM":
+      rootNode = HDKeyEd.fromMasterSeed(seed)
+    break;
     default:
       rootNode = HDKey.fromMasterSeed(seed)
     break;

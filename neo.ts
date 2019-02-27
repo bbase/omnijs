@@ -16,7 +16,7 @@ export const getWallet = ({childNode}) =>{
 export const send = async ({
     rb, from, address, amount, options,
 }: sendType): Promise<string> => {
-    const { api } = getConfig(config, rb);
+    const { api } = getConfig(rb);
     const balance = (await axios.get(`${api}/get_balance/${address}`)).data;
     const result = await sendTransaction([{ amount: amount.toString(), address, symbol: rb.rel }],
         {

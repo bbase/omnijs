@@ -16,7 +16,7 @@ export const getWallet = ({ childNode }) => {
 export const send = async ({
     rb, from, address, amount, options,
 }: sendType): Promise<string> => {
-    const { api, node } = getConfig(config, rb);
+    const { api, node } = getConfig(rb);
     
     const account_info = await axios.post(`${api}`, {"jsonrpc":"2.0","method":"account_info","params":[{
         "account": from,
@@ -32,7 +32,7 @@ export const send = async ({
         Fee: 12,
         Sequence: seq,
         Flags: 2147483648,
-        Amount: amount * getAtomicValue(config, rb),
+        Amount: amount * getAtomicValue(rb),
     }
     const signedTransaction = rsign(txJSON, { privateKey: options.wif, publicKey: options.publicKey })
     const data = await axios.post(`${api}/tx_submit/`, {

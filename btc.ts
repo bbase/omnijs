@@ -1,4 +1,4 @@
-import { getAtomicValue, getConfig, toBitcoinJS, txParamsType, sendType, BalancesType, ITransactionType } from "app/constants";
+import { getAtomicValue, getConfig, toBitcoinJS, txParamsType, sendType, BalancesType, ITransactionType, getNetwork } from "app/constants";
 import axios from "axios";
 import bitcoin from "bitcoinjs-lib";
 import {config} from "app/constants";
@@ -7,15 +7,15 @@ const bufferToHex = (buffer) => {
 }
 const segwitSupported = ["BTCX"];
 
+
 export const getWallet = ({rb, childNode}) => {
-  const network = toBitcoinJS(config[rb.rel].network);
-  
+  const network = getNetwork(rb.rel);
   const { address } = segwitSupported.indexOf(rb.rel) != -1 ? bitcoin.payments.p2sh({
     redeem: bitcoin.payments.p2wpkh({ pubkey: childNode.publicKey })
   }) : bitcoin.payments.p2pkh({
     pubkey: childNode.publicKey,
     network,
-  }) ;
+  });
   const firstKeyECPair = bitcoin.ECPair.fromPrivateKey(childNode.privateKey, {
     network,
   });  
@@ -27,13 +27,13 @@ export const getWallet = ({rb, childNode}) => {
 export const send = async ({
   rb, from, address, amount, options,
 }: sendType) => {
-  const multiply_by = rb.rel == "BTC" ? 1 : getAtomicValue(config, rb);
+  const multiply_by = rb.rel == "BTC" ? 1 : getAtomicValue(rb);
   const utxos = await getUtxos({ rb, address: from });
   const txid = await broadcastTx({
     utxos,
     from,
     to: address,
-    amount: amount * getAtomicValue(config, rb),
+    amount: amount * getAtomicValue(rb),
     wif: options.wif,
     publicKey: options.publicKey,
     fee: options.fees * multiply_by,
@@ -42,7 +42,7 @@ export const send = async ({
   return txid;
 };
 export const getUtxos = async ({ rb, address }: txParamsType) => {
-  const data = await axios.post(`${getConfig(config, rb).api}/addrs/utxo`, {
+  const data = await axios.post(`${getConfig(rb).api}/addrs/utxo`, {
     addrs: address,
   });
   return data.data;
@@ -85,7 +85,7 @@ export const broadcastTx = async ({
       }
     });
     const rawtx = tx.build().toHex();
-    const data = await axios.post(`${getConfig(config, rb).api}/tx/send`, {
+    const data = await axios.post(`${getConfig(rb).api}/tx/send`, {
       rawtx,
     });
     return data.data.txid;
