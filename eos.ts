@@ -1,6 +1,6 @@
 import ecc from 'eosjs-ecc'
 import Wif from 'wif'
-import { Api, JsonRpc, RpcError, } from 'eosjs';
+import { Api, JsonRpc } from 'eosjs';
 import { config, sendType } from 'app/constants';
 import JsSignatureProvider from "eosjs/dist/eosjs-jssig";
 
