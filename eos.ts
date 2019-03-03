@@ -2,8 +2,7 @@ import ecc from 'eosjs-ecc'
 import Wif from 'wif'
 import { Api, JsonRpc } from 'eosjs';
 import { config, sendType } from 'app/constants';
-import JsSignatureProvider from "eosjs/dist/eosjs-jssig";
-
+const JsSignatureProvider = require('eosjs/dist/eosjs-jssig').default;
 const getApi = (base, wif) => {
     const privateKeys = [wif];
     const signatureProvider = new JsSignatureProvider(privateKeys);
