@@ -7,7 +7,7 @@ import * as neo from "./neo";
 import * as vet from "./vet";
 import * as xrp from "./xrp";
 import * as eos from "./eos";
-import * as xlm from "./xlm";
+//import * as xlm from "./xlm";
 
 import {
   sendOptionsType,
@@ -22,7 +22,7 @@ const HDKey = require('hdkey')
 const HDKeyr = require('@ont-community/hdkey-secp256r1')
 const HDKeyEd = require("./_hdkey_ed25519");
 
-const G_IMPORT = {btc, eth, neo, nano, vet, xrp, eos, xlm};
+const G_IMPORT = {btc, eth, neo, nano, vet, xrp, eos};//, xlm
 
 export const generateSeed = (_mnemonic?: string, passphrase: string = "", options?: any) => {
   const mnemonic = _mnemonic ? _mnemonic : bip39.generateMnemonic(256);
